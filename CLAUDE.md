@@ -22,13 +22,15 @@ npx nx run twenty-server:worker  # Start background worker
 ### Testing
 ```bash
 # Preferred: run a single test file (fast)
-npx jest path/to/test.test.ts --config=packages/PROJECT/jest.config.mjs
+# twenty-front uses jest.config.mjs; twenty-server uses jest.config.ts — pass the right one
+npx jest path/to/test.test.ts --config=packages/twenty-front/jest.config.mjs
+npx jest path/to/test.test.ts --config=packages/twenty-server/jest.config.ts
 
 # Run all tests for a package
 npx nx test twenty-front      # Frontend unit tests
 npx nx test twenty-server     # Backend unit tests
 npx nx run twenty-server:test:integration:with-db-reset  # Integration tests with DB reset
-# To run an indivual test or a pattern of tests, use the following command:
+# To run an individual test or a pattern of tests:
 cd packages/{workspace} && npx jest "pattern or filename"
 
 # Storybook
@@ -71,7 +73,10 @@ npx nx build twenty-server
 # Database management
 npx nx database:reset twenty-server         # Reset database
 npx nx run twenty-server:database:init:prod # Initialize database
-npx nx run twenty-server:database:migrate:prod # Run instance commands (fast only)
+
+# Run upgrade: fast instance commands first, then slow ones (only with --include-slow),
+# then workspace commands. Each group is timestamp-sorted internally.
+npx nx run twenty-server:database:migrate:prod
 
 # Generate an instance command (fast or slow)
 npx nx run twenty-server:database:migrate:generate --name <name> --type <fast|slow>
@@ -102,7 +107,7 @@ npx nx run twenty-front:graphql:generate --configuration=metadata
 - **Backend**: NestJS, TypeORM, PostgreSQL, Redis, GraphQL (with GraphQL Yoga)
 - **Monorepo**: Nx workspace managed with Yarn 4
 
-### Package Structure
+### Package Structure (non-exhaustive — see `packages/` for the full list)
 ```
 packages/
 ├── twenty-front/          # React frontend application
@@ -112,38 +117,19 @@ packages/
 ├── twenty-emails/         # Email templates with React Email
 ├── twenty-website/        # Next.js documentation website
 ├── twenty-zapier/         # Zapier integration
-└── twenty-e2e-testing/    # Playwright E2E tests
+├── twenty-e2e-testing/    # Playwright E2E tests
+├── twenty-cli/            # CLI tool
+├── twenty-sdk/            # SDK
+├── twenty-client-sdk/     # Client SDK
+├── twenty-apps/           # First-party apps
+├── twenty-docker/         # Docker configs (incl. dev compose)
+└── twenty-utils/          # Repo utilities (incl. setup-dev-env.sh)
 ```
 
-### Key Development Principles
-- **Functional components only** (no class components)
-- **Named exports only** (no default exports)
-- **Types over interfaces** (except when extending third-party interfaces)
-- **String literals over enums** (except for GraphQL enums)
-- **No 'any' type allowed** — strict TypeScript enforced
-- **Event handlers preferred over useEffect** for state updates
-- **Props down, events up** — unidirectional data flow
-- **Composition over inheritance**
-- **No abbreviations** in variable names (`user` not `u`, `fieldMetadata` not `fm`)
+### Code Conventions
+Code style, naming, file layout, and comment rules live in `.cursor/rules/` (`code-style.mdc`, `file-structure.mdc`, `typescript-guidelines.mdc`, `react-general-guidelines.mdc`). These are auto-applied — read them when in doubt.
 
-### Naming Conventions
-- **Variables/functions**: camelCase
-- **Constants**: SCREAMING_SNAKE_CASE
-- **Types/Classes**: PascalCase (suffix component props with `Props`, e.g. `ButtonProps`)
-- **Files/directories**: kebab-case with descriptive suffixes (`.component.tsx`, `.service.ts`, `.entity.ts`, `.dto.ts`, `.module.ts`)
-- **TypeScript generics**: descriptive names (`TData` not `T`)
-
-### File Structure
-- Components under 300 lines, services under 500 lines
-- Components in their own directories with tests and stories
-- Use `index.ts` barrel exports for clean imports
-- Import order: external libraries first, then internal (`@/`), then relative
-
-### Comments
-- Use short-form comments (`//`), not JSDoc blocks
-- Explain WHY (business logic), not WHAT
-- Do not comment obvious code
-- Multi-line comments use multiple `//` lines, not `/** */`
+Caveat: `.cursor/rules/translations.mdc` references **react-i18next**, but the codebase actually uses **Lingui** (`@lingui/react`). Trust Lingui.
 
 ### State Management
 - **Jotai** for global state: atoms for primitive state, selectors for derived state, atom families for dynamic collections
@@ -174,6 +160,15 @@ packages/
 Use existing helpers from `twenty-shared` instead of manual type guards:
 - `isDefined()`, `isNonEmptyString()`, `isNonEmptyArray()`
 
+### Syncable Entities
+When touching the syncable-entity subsystem, check `.cursor/skills/` first — there are six dedicated skills covering the relevant pieces:
+- `syncable-entity-builder-and-validation`
+- `syncable-entity-cache-and-transform`
+- `syncable-entity-integration`
+- `syncable-entity-runner-and-actions`
+- `syncable-entity-testing`
+- `syncable-entity-types-and-constants`
+
 ## Development Workflow
 
 IMPORTANT: Use Context7 for code generation, setup or configuration steps, or library/API documentation. Automatically use the Context7 MCP tools to resolve library IDs and get library docs without waiting for explicit requests.
@@ -185,19 +180,9 @@ IMPORTANT: Use Context7 for code generation, setup or configuration steps, or li
 4. Check that GraphQL schema changes are backward compatible
 5. Run `graphql:generate` after any GraphQL schema changes
 
-### Code Style Notes
-- Use **Linaria** for styling with zero-runtime CSS-in-JS (styled-components pattern)
-- Follow **Nx** workspace conventions for imports
-- Use **Lingui** for internationalization
-- Apply security first, then formatting (sanitize before format)
-
-### Testing Strategy
-- **Test behavior, not implementation** — focus on user perspective
-- **Test pyramid**: 70% unit, 20% integration, 10% E2E
-- Query by user-visible elements (text, roles, labels) over test IDs
-- Use `@testing-library/user-event` for realistic interactions
-- Descriptive test names: "should [behavior] when [condition]"
-- Clear mocks between tests with `jest.clearAllMocks()`
+### Styling & i18n
+- **Linaria** for styling (zero-runtime CSS-in-JS, styled-components-style API).
+- **Lingui** for internationalization — see `.cursor/rules/translations.mdc` for workflow (ignore its `react-i18next` references; the actual library is Lingui).
 
 ## Dev Environment Setup
 
