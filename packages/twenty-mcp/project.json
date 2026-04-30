@@ -1,0 +1,53 @@
+{
+  "name": "twenty-mcp",
+  "projectType": "application",
+  "tags": ["scope:mcp"],
+  "targets": {
+    "build": {
+      "outputs": ["{projectRoot}/lib"],
+      "executor": "nx:run-commands",
+      "options": {
+        "cwd": "{projectRoot}",
+        "commands": ["npx tsc -p tsconfig.json"]
+      },
+      "dependsOn": ["clean"]
+    },
+    "start": {
+      "executor": "nx:run-commands",
+      "options": {
+        "cwd": "{projectRoot}",
+        "commands": ["node lib/index.js"]
+      },
+      "dependsOn": ["build"]
+    },
+    "dev": {
+      "executor": "nx:run-commands",
+      "options": {
+        "cwd": "{projectRoot}",
+        "commands": ["npx tsc --watch"]
+      }
+    },
+    "clean": {
+      "executor": "nx:run-commands",
+      "options": {
+        "cwd": "{projectRoot}",
+        "commands": ["rimraf ./lib"]
+      }
+    },
+    "test": {
+      "executor": "nx:run-commands",
+      "options": {
+        "cwd": "{projectRoot}",
+        "commands": ["NODE_ENV=test jest --testTimeout 10000"]
+      }
+    },
+    "lint": {},
+    "typecheck": {
+      "executor": "nx:run-commands",
+      "options": {
+        "cwd": "{projectRoot}",
+        "commands": ["npx tsc --noEmit"]
+      }
+    }
+  }
+}

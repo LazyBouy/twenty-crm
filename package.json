@@ -215,7 +215,8 @@
       "packages/twenty-cli",
       "packages/create-twenty-app",
       "packages/twenty-oxlint-rules",
-      "packages/twenty-companion"
+      "packages/twenty-companion",
+      "packages/twenty-mcp"
     ]
   },
   "prettier": {
