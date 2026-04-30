@@ -42,7 +42,7 @@ describe('handleDiscovery', () => {
     const toolsCall = jest.fn().mockResolvedValue(schemaResult);
     const result = await handleDiscovery({ focus: 'search_records' }, makeClient(toolsCall));
 
-    expect(toolsCall).toHaveBeenCalledWith('learn_tools', { tools: ['search_records'] });
+    expect(toolsCall).toHaveBeenCalledWith('learn_tools', { toolNames: ['search_records'] });
     expect(result).toBe(schemaResult);
   });
 
@@ -64,7 +64,7 @@ describe('handleDiscovery', () => {
     const toolsCall = jest.fn().mockResolvedValue(catalogText([]));
     await handleDiscovery({ category: 'records' }, makeClient(toolsCall));
 
-    expect(toolsCall).toHaveBeenCalledWith('get_tool_catalog', { category: 'records' });
+    expect(toolsCall).toHaveBeenCalledWith('get_tool_catalog', { categories: ['records'] });
   });
 
   it('surfaces upstream errors as isError content blocks', async () => {

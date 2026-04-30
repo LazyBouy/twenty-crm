@@ -1,0 +1,13 @@
+node_modules
+lib
+.env
+.env.*
+PLAN.md
+README.md
+jest.config.ts
+project.json
+src/**/__tests__
+**/*.test.ts
+**/*.spec.ts
+*.log
+.DS_Store

@@ -1,5 +1,4 @@
 {
-  "extends": "../../tsconfig.base.json",
   "compilerOptions": {
     "target": "es2022",
     "module": "commonjs",
@@ -10,9 +9,11 @@
     "strict": true,
     "esModuleInterop": true,
     "skipLibCheck": true,
+    "skipDefaultLibCheck": true,
     "declaration": false,
     "sourceMap": true,
     "resolveJsonModule": true,
+    "importHelpers": false,
     "types": ["node", "jest"]
   },
   "include": ["src/**/*"],

@@ -1,8 +1,4 @@
-import {
-  buildCrmHandlers,
-  DEFAULT_INNER_TOOL_NAMES,
-  resolveInnerToolNames,
-} from '../tools/crm';
+import { buildCrmHandlers, innerToolName } from '../tools/crm';
 import { TwentyMcpClient } from '../twenty-mcp-client';
 
 const makeClient = () => {
@@ -11,30 +7,57 @@ const makeClient = () => {
   return { toolsCall, client: { toolsCall } as unknown as TwentyMcpClient };
 };
 
-describe('CRM convenience tools', () => {
-  it('searchRecords wraps execute_tool with the search inner name', async () => {
+describe('innerToolName — Twenty per-object tool naming', () => {
+  it('search uses find_<plural>', () => {
+    expect(innerToolName('search', 'person')).toBe('find_people');
+    expect(innerToolName('search', 'people')).toBe('find_people');
+    expect(innerToolName('search', 'company')).toBe('find_companies');
+    expect(innerToolName('search', 'companies')).toBe('find_companies');
+    expect(innerToolName('search', 'opportunity')).toBe('find_opportunities');
+  });
+
+  it('get uses find_one_<singular>', () => {
+    expect(innerToolName('get', 'people')).toBe('find_one_person');
+    expect(innerToolName('get', 'person')).toBe('find_one_person');
+    expect(innerToolName('get', 'companies')).toBe('find_one_company');
+    expect(innerToolName('get', 'blocklists')).toBe('find_one_blocklist');
+  });
+
+  it('create / update / delete use <op>_<singular>', () => {
+    expect(innerToolName('create', 'people')).toBe('create_person');
+    expect(innerToolName('update', 'companies')).toBe('update_company');
+    expect(innerToolName('delete', 'opportunities')).toBe('delete_opportunity');
+  });
+
+  it('normalizes spaces and case', () => {
+    expect(innerToolName('search', 'Note Targets')).toBe('find_note_targets');
+  });
+});
+
+describe('CRM convenience tools — wire-level', () => {
+  it('searchRecords calls execute_tool with find_<plural> and strips object from args', async () => {
     const { toolsCall, client } = makeClient();
     const handlers = buildCrmHandlers(client);
     await handlers.searchRecords({ object: 'people', query: 'alice', limit: 5 });
 
     expect(toolsCall).toHaveBeenCalledWith('execute_tool', {
-      name: DEFAULT_INNER_TOOL_NAMES.search,
-      arguments: { object: 'people', query: 'alice', limit: 5 },
+      toolName: 'find_people',
+      arguments: { query: 'alice', limit: 5 },
     });
   });
 
-  it('getRecord targets the get inner tool', async () => {
+  it('getRecord calls execute_tool with find_one_<singular>', async () => {
     const { toolsCall, client } = makeClient();
     const handlers = buildCrmHandlers(client);
     await handlers.getRecord({ object: 'people', id: 'abc' });
 
-    expect(toolsCall.mock.calls[0][1]).toMatchObject({
-      name: DEFAULT_INNER_TOOL_NAMES.get,
-      arguments: { object: 'people', id: 'abc' },
+    expect(toolsCall).toHaveBeenCalledWith('execute_tool', {
+      toolName: 'find_one_person',
+      arguments: { id: 'abc' },
     });
   });
 
-  it('createRecord, updateRecord, deleteRecord each route to their inner tools', async () => {
+  it('createRecord, updateRecord, deleteRecord each route to per-object tools', async () => {
     const { toolsCall, client } = makeClient();
     const handlers = buildCrmHandlers(client);
 
@@ -42,26 +65,7 @@ describe('CRM convenience tools', () => {
     await handlers.updateRecord({ object: 'companies', id: 'c1', data: { name: 'Acme 2' } });
     await handlers.deleteRecord({ object: 'companies', id: 'c1' });
 
-    const innerNames = toolsCall.mock.calls.map((c) => (c[1] as { name: string }).name);
-    expect(innerNames).toEqual([
-      DEFAULT_INNER_TOOL_NAMES.create,
-      DEFAULT_INNER_TOOL_NAMES.update,
-      DEFAULT_INNER_TOOL_NAMES.delete,
-    ]);
-  });
-
-  it('respects TWENTY_MCP_INNER_TOOLS overrides', () => {
-    const overrides = resolveInnerToolNames({
-      TWENTY_MCP_INNER_TOOLS: JSON.stringify({ search: 'crm.search.v2' }),
-    } as NodeJS.ProcessEnv);
-    expect(overrides.search).toBe('crm.search.v2');
-    expect(overrides.get).toBe(DEFAULT_INNER_TOOL_NAMES.get);
-  });
-
-  it('falls back to defaults when TWENTY_MCP_INNER_TOOLS is invalid JSON', () => {
-    const overrides = resolveInnerToolNames({
-      TWENTY_MCP_INNER_TOOLS: 'not-json',
-    } as NodeJS.ProcessEnv);
-    expect(overrides).toEqual(DEFAULT_INNER_TOOL_NAMES);
+    const innerNames = toolsCall.mock.calls.map((c) => (c[1] as { toolName: string }).toolName);
+    expect(innerNames).toEqual(['create_company', 'update_company', 'delete_company']);
   });
 });

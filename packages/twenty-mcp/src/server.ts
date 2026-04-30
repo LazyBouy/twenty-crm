@@ -1,11 +1,7 @@
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js';
 
-import {
-  buildCrmHandlers,
-  crmToolDefinitions,
-  resolveInnerToolNames,
-} from './tools/crm';
+import { buildCrmHandlers, crmToolDefinitions } from './tools/crm';
 import {
   discoveryInputSchema,
   discoveryToolDefinition,
@@ -21,14 +17,12 @@ const SERVER_INFO = {
 export type CreateServerOptions = {
   twentyBaseUrl: string;
   twentyApiKey: string;
-  innerTools?: ReturnType<typeof resolveInnerToolNames>;
   fetchImpl?: typeof fetch;
 };
 
 export const createServer = ({
   twentyBaseUrl,
   twentyApiKey,
-  innerTools = resolveInnerToolNames(),
   fetchImpl,
 }: CreateServerOptions): McpServer => {
   const client = new TwentyMcpClient({
@@ -52,7 +46,7 @@ export const createServer = ({
     async (args) => handleDiscovery(discoveryInputSchema.parse(args), client),
   );
 
-  const crm = buildCrmHandlers(client, innerTools);
+  const crm = buildCrmHandlers(client);
 
   server.registerTool('search_records', crmToolDefinitions.search_records, async (args) =>
     crm.searchRecords(args as Parameters<typeof crm.searchRecords>[0]),

@@ -1,31 +1,45 @@
+import pluralize from 'pluralize';
 import { z } from 'zod';
 
 import type { ToolsCallResult, TwentyMcpClient } from '../twenty-mcp-client';
 
 /**
- * Inner tool names exposed by Twenty's COMMON_PRELOAD_TOOLS registry.
- * These are best-effort defaults — they can be overridden at runtime via the
- * TWENTY_MCP_INNER_TOOLS env var (JSON object) if Twenty renames them.
+ * Twenty exposes per-object CRUD tools using a predictable naming pattern derived
+ * from the object name (snake_case). For "person":
+ *   search → find_people
+ *   get    → find_one_person
+ *   create → create_person
+ *   update → update_person
+ *   delete → delete_person
+ *
+ * The agent can pass either the plural or singular form of `object` — we normalize
+ * both via the `pluralize` package, so "people" and "person" both route correctly.
  */
-export const DEFAULT_INNER_TOOL_NAMES = {
-  search: 'search_records',
-  get: 'find_one_record',
-  create: 'create_one_record',
-  update: 'update_one_record',
-  delete: 'delete_one_record',
-} as const;
+const normalize = (object: string): { singular: string; plural: string } => {
+  const trimmed = object.trim().replace(/\s+/g, '_').toLowerCase();
 
-export type InnerToolNames = typeof DEFAULT_INNER_TOOL_NAMES;
+  return {
+    singular: pluralize.singular(trimmed),
+    plural: pluralize.plural(trimmed),
+  };
+};
 
-export const resolveInnerToolNames = (env: NodeJS.ProcessEnv = process.env): InnerToolNames => {
-  const raw = env.TWENTY_MCP_INNER_TOOLS;
-  if (!raw) return DEFAULT_INNER_TOOL_NAMES;
-  try {
-    const parsed = JSON.parse(raw) as Partial<InnerToolNames>;
-
-    return { ...DEFAULT_INNER_TOOL_NAMES, ...parsed };
-  } catch {
-    return DEFAULT_INNER_TOOL_NAMES;
+export const innerToolName = (
+  op: 'search' | 'get' | 'create' | 'update' | 'delete',
+  object: string,
+): string => {
+  const { singular, plural } = normalize(object);
+  switch (op) {
+    case 'search':
+      return `find_${plural}`;
+    case 'get':
+      return `find_one_${singular}`;
+    case 'create':
+      return `create_${singular}`;
+    case 'update':
+      return `update_${singular}`;
+    case 'delete':
+      return `delete_${singular}`;
   }
 };
 
@@ -33,7 +47,7 @@ const objectArg = z
   .string()
   .min(1)
   .describe(
-    'Plural object name as known to Twenty (e.g. "people", "companies", "opportunities", "notes", "tasks", or any custom object).',
+    'CRM object name. Either singular ("person", "company") or plural ("people", "companies") — both forms route correctly. Includes custom objects.',
   );
 
 export const searchInputSchema = z.object({
@@ -73,54 +87,60 @@ const wrapInExecute = async (
   client: TwentyMcpClient,
   innerName: string,
   args: Record<string, unknown>,
-): Promise<ToolsCallResult> => {
-  return client.toolsCall('execute_tool', { name: innerName, arguments: args });
+): Promise<ToolsCallResult> =>
+  client.toolsCall('execute_tool', { toolName: innerName, arguments: args });
+
+const stripObject = <T extends { object: string }>(args: T): Omit<T, 'object'> => {
+  const { object: _ignored, ...rest } = args;
+
+  return rest;
 };
 
-export const buildCrmHandlers = (
-  client: TwentyMcpClient,
-  inner: InnerToolNames = DEFAULT_INNER_TOOL_NAMES,
-) => ({
+export const buildCrmHandlers = (client: TwentyMcpClient) => ({
   searchRecords: (args: z.infer<typeof searchInputSchema>) =>
-    wrapInExecute(client, inner.search, args),
-  getRecord: (args: z.infer<typeof getInputSchema>) => wrapInExecute(client, inner.get, args),
+    wrapInExecute(client, innerToolName('search', args.object), stripObject(args)),
+  getRecord: (args: z.infer<typeof getInputSchema>) =>
+    wrapInExecute(client, innerToolName('get', args.object), stripObject(args)),
   createRecord: (args: z.infer<typeof createInputSchema>) =>
-    wrapInExecute(client, inner.create, args),
+    wrapInExecute(client, innerToolName('create', args.object), stripObject(args)),
   updateRecord: (args: z.infer<typeof updateInputSchema>) =>
-    wrapInExecute(client, inner.update, args),
+    wrapInExecute(client, innerToolName('update', args.object), stripObject(args)),
   deleteRecord: (args: z.infer<typeof deleteInputSchema>) =>
-    wrapInExecute(client, inner.delete, args),
+    wrapInExecute(client, innerToolName('delete', args.object), stripObject(args)),
 });
 
 export const crmToolDefinitions = {
   search_records: {
     title: 'Search CRM records',
     description:
-      'Search records of a given object (e.g. people, companies, opportunities). Use discovery({focus: "search_records"}) for the full schema if needed.',
+      'Search records of a given object (e.g. people, companies, opportunities, or any custom object). Routes to Twenty\'s `find_<plural>` tool. Use discovery({focus: "find_<plural>"}) for the inner tool\'s full schema if you need advanced filtering.',
     inputSchema: searchInputSchema.shape,
     annotations: { readOnlyHint: true, idempotentHint: true },
   },
   get_record: {
     title: 'Get a CRM record by id',
-    description: 'Fetch a single record by its uuid.',
+    description: 'Fetch a single record by its uuid. Routes to Twenty\'s `find_one_<singular>` tool.',
     inputSchema: getInputSchema.shape,
     annotations: { readOnlyHint: true, idempotentHint: true },
   },
   create_record: {
     title: 'Create a CRM record',
-    description: 'Create a new record on a given object. Returns the created record.',
+    description:
+      'Create a new record on a given object. Routes to Twenty\'s `create_<singular>` tool. Returns the created record.',
     inputSchema: createInputSchema.shape,
     annotations: { destructiveHint: false, idempotentHint: false },
   },
   update_record: {
     title: 'Update a CRM record',
-    description: 'Patch fields on an existing record. Returns the updated record.',
+    description:
+      'Patch fields on an existing record. Routes to Twenty\'s `update_<singular>` tool. Returns the updated record.',
     inputSchema: updateInputSchema.shape,
     annotations: { destructiveHint: false, idempotentHint: true },
   },
   delete_record: {
     title: 'Delete a CRM record',
-    description: 'Soft-delete a record by id (Twenty uses soft delete by default).',
+    description:
+      'Soft-delete a record by id (Twenty uses soft delete by default). Routes to Twenty\'s `delete_<singular>` tool.',
     inputSchema: deleteInputSchema.shape,
     annotations: { destructiveHint: true, idempotentHint: true },
   },

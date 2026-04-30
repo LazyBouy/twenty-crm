@@ -46,10 +46,15 @@ const extractJsonFromText = (result) => {
 const collectCatalog = (raw) => {
     if (!raw)
         return [];
-    // Twenty returns either a flat array or an object grouped by category.
+    // Twenty wraps the response as { catalog: { CATEGORY: [...] } }. Unwrap if so.
+    if (typeof raw === 'object' && !Array.isArray(raw) && 'catalog' in raw) {
+        return collectCatalog(raw.catalog);
+    }
+    // Flat array of entries.
     if (Array.isArray(raw)) {
         return raw.filter((e) => typeof e === 'object' && e !== null && 'name' in e);
     }
+    // Object grouped by category.
     if (typeof raw === 'object') {
         const out = [];
         for (const [category, value] of Object.entries(raw)) {
@@ -94,7 +99,7 @@ const handleDiscovery = async (input, client) => {
     // focus mode: return the schema for a specific tool via Twenty's learn_tools.
     if (input.focus) {
         try {
-            const result = await client.toolsCall('learn_tools', { tools: [input.focus] });
+            const result = await client.toolsCall('learn_tools', { toolNames: [input.focus] });
             return result;
         }
         catch (err) {
@@ -107,7 +112,7 @@ const handleDiscovery = async (input, client) => {
     try {
         const args = {};
         if (input.category)
-            args.category = input.category;
+            args.categories = [input.category];
         catalog = await client.toolsCall('get_tool_catalog', args);
     }
     catch (err) {
