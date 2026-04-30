@@ -6,6 +6,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 Twenty is an open-source CRM built with modern technologies in a monorepo structure. The codebase is organized as an Nx workspace with multiple packages.
 
+Toolchain: **Node ≥ 24.5**, **Yarn 4** (`packageManager: yarn@4.13.0`), Nx 22, TypeScript 5.9. `npm` is rejected by the engines field — always use `yarn` / `npx nx`.
+
 ## Key Commands
 
 ### Development
@@ -82,16 +84,12 @@ npx nx run twenty-server:database:migrate:prod
 npx nx run twenty-server:database:migrate:generate --name <name> --type <fast|slow>
 ```
 
-### Database Inspection (Postgres MCP)
+### MCP Servers
 
-A read-only Postgres MCP server is configured in `.mcp.json`. Use it to:
-- Inspect workspace data, metadata, and object definitions while developing
-- Verify migration results (columns, types, constraints) after running migrations
-- Explore the multi-tenant schema structure (core, metadata, workspace-specific schemas)
-- Debug issues by querying raw data to confirm whether a bug is frontend, backend, or data-level
-- Inspect metadata tables to debug GraphQL schema generation issues
-
-This server is read-only — for write operations (reset, migrations, sync), use the CLI commands above.
+Three MCP servers are configured in `.mcp.json`:
+- **postgres** — read-only Postgres connection. Use it to inspect workspace data and metadata, verify migration results (columns, types, constraints), explore the multi-tenant schema structure (core, metadata, workspace-specific schemas), and confirm whether a bug is frontend, backend, or data-level. Read-only — for writes (reset, migrations, sync), use the CLI commands above.
+- **playwright** — headless browser for end-to-end UI verification. Use it to exercise flows ("Continue with Email" + prefilled credentials) before reporting UI work as complete.
+- **context7** — library/API documentation lookup. Use proactively for code generation, setup/configuration steps, or anything involving an external library — resolve the library ID and fetch docs without waiting for an explicit request.
 
 ### GraphQL
 ```bash
@@ -127,9 +125,19 @@ packages/
 ```
 
 ### Code Conventions
-Code style, naming, file layout, and comment rules live in `.cursor/rules/` (`code-style.mdc`, `file-structure.mdc`, `typescript-guidelines.mdc`, `react-general-guidelines.mdc`). These are auto-applied — read them when in doubt.
+Full rules live in `.cursor/rules/` (`code-style.mdc`, `file-structure.mdc`, `typescript-guidelines.mdc`, `react-general-guidelines.mdc`) and are auto-applied — read them when in doubt. The non-negotiables to know up front:
 
-Caveat: `.cursor/rules/translations.mdc` references **react-i18next**, but the codebase actually uses **Lingui** (`@lingui/react`). Trust Lingui.
+- **No `any`** — strict TypeScript, `noImplicitAny` enabled.
+- **`type`, not `interface`** (except when extending third-party interfaces).
+- **String literal unions, not enums** (except GraphQL).
+- **Named exports only** — no default exports.
+- **Functional components only** — no classes.
+- **kebab-case** for files and directories; `*.component.tsx`, `*.styles.ts`, `*.test.tsx`, `*.service.ts`, `*.entity.ts`, `*.dto.ts` suffixes.
+- **No abbreviations** in variable names (`user`, not `u`; `fieldMetadataItem`, not `f`).
+- **Event handlers over `useEffect`** for state updates.
+- Comments: only when explaining non-obvious *why*, never JSDoc blocks. Use `//` form.
+
+Caveat: `.cursor/rules/translations.mdc` references **react-i18next**, but the codebase actually uses **Lingui** (`@lingui/react`). Trust Lingui. Likewise `.cursor/rules/architecture.mdc` says "Styled Components" — the codebase uses **Linaria**.
 
 ### State Management
 - **Jotai** for global state: atoms for primitive state, selectors for derived state, atom families for dynamic collections

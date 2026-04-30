@@ -6,11 +6,13 @@ services:
     volumes:
       - server-local-data:/app/packages/twenty-server/.local-storage
     ports:
-      - "4440:3000"
+      # Bind to localhost only — Caddy reaches the server over the docker network.
+      - "127.0.0.1:4440:3000"
     environment:
       NODE_PORT: 3000
       PG_DATABASE_URL: postgres://${PG_DATABASE_USER:-postgres}:${PG_DATABASE_PASSWORD}@${PG_DATABASE_HOST:-db}:${PG_DATABASE_PORT:-5432}/${PG_DATABASE_NAME:-default}
       SERVER_URL: ${SERVER_URL}
+      FRONT_AUTO_BASE_URL: ${FRONT_AUTO_BASE_URL:-false}
       REDIS_URL: ${REDIS_URL:-redis://redis:6379}
 
       STORAGE_TYPE: ${STORAGE_TYPE:-local}
@@ -101,6 +103,25 @@ services:
         condition: service_healthy
     restart: always
 
+  caddy:
+    image: caddy:2-alpine
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+    environment:
+      # Bearer token clients must send as `Authorization: Bearer <token>` to reach /mcp.
+      MCP_INBOUND_TOKEN: ${MCP_INBOUND_TOKEN}
+    depends_on:
+      server:
+        condition: service_healthy
+    restart: always
+
 volumes:
   db-data:
   server-local-data:
+  caddy-data:
+  caddy-config:

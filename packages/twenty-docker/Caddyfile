@@ -1,0 +1,23 @@
+# Twenty reverse proxy.
+# Bare-IP / HTTP phase: keep the `:80` site block. When you have a domain,
+# replace `:80` with `your-domain.com` and Caddy will auto-issue a
+# Let's Encrypt certificate on first request to :443.
+:80 {
+	# /mcp — bearer-token-gated, proxied to the twenty-mcp container.
+	# The MCP server has no inbound auth of its own, so we enforce it here.
+	@mcp_authed {
+		path /mcp*
+		header Authorization "Bearer {env.MCP_INBOUND_TOKEN}"
+	}
+	@mcp_any path /mcp*
+
+	handle @mcp_authed {
+		reverse_proxy mcp:4441
+	}
+	handle @mcp_any {
+		respond "Unauthorized" 401
+	}
+
+	# Everything else — UI, GraphQL, REST, healthz — to the Twenty server.
+	reverse_proxy server:3000
+}
