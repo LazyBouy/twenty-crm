@@ -34,16 +34,32 @@ export type TwentyMcpClientOptions = {
 };
 
 /**
- * HTTP client for Twenty's POST /mcp JSON-RPC endpoint.
+ * HTTP client for Twenty's POST /mcp JSON-RPC endpoint AND POST /metadata GraphQL.
+ * The /mcp endpoint is the primary path (used by the discovery + CRM + most metadata
+ * tools). The /metadata GraphQL endpoint is used only for access ops (roles,
+ * permissions, members, API keys, webhooks) which Twenty exposes as GraphQL
+ * resolvers without inner-tool wrappers — see access.ts.
+ *
+ * Both endpoints share the same workspace API key bearer auth.
  * Mirrors the Bearer-auth pattern used by packages/twenty-zapier/src/utils/requestDb.ts.
  */
+
+export type GraphqlError = {
+  message: string;
+  extensions?: { code?: string; subCode?: string; userFriendlyMessage?: string };
+  path?: ReadonlyArray<string | number>;
+};
+
 export class TwentyMcpClient {
-  private readonly endpoint: string;
+  private readonly mcpEndpoint: string;
+  private readonly graphqlEndpoint: string;
   private readonly apiKey: string;
   private readonly fetchImpl: FetchLike;
 
   constructor({ baseUrl, apiKey, fetchImpl }: TwentyMcpClientOptions) {
-    this.endpoint = `${baseUrl.replace(/\/+$/, '')}/mcp`;
+    const trimmed = baseUrl.replace(/\/+$/, '');
+    this.mcpEndpoint = `${trimmed}/mcp`;
+    this.graphqlEndpoint = `${trimmed}/metadata`;
     this.apiKey = apiKey;
     this.fetchImpl = fetchImpl ?? fetch;
   }
@@ -56,7 +72,7 @@ export class TwentyMcpClient {
       params: { name, arguments: args },
     };
 
-    const response = await this.fetchImpl(this.endpoint, {
+    const response = await this.fetchImpl(this.mcpEndpoint, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -85,5 +101,50 @@ export class TwentyMcpClient {
     }
 
     return json.result;
+  }
+
+  /**
+   * Issue a GraphQL query or mutation against Twenty's /metadata endpoint.
+   * Used by access tools (roles, permissions, API keys) since Twenty does not
+   * expose inner MCP tools for these. Errors come back in the GraphQL
+   * `{errors: [...]}` envelope; we normalise to TwentyMcpClientError so callers
+   * don't branch on transport.
+   */
+  async graphqlMutation<T = unknown>(
+    query: string,
+    variables: Record<string, unknown> = {},
+  ): Promise<T> {
+    const response = await this.fetchImpl(this.graphqlEndpoint, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Accept: 'application/json',
+        Authorization: `Bearer ${this.apiKey}`,
+      },
+      body: JSON.stringify({ query, variables }),
+    });
+
+    if (!response.ok) {
+      const text = await response.text().catch(() => '');
+      throw new TwentyMcpClientError(
+        `Twenty /metadata returned ${response.status} ${response.statusText}${text ? `: ${text.slice(0, 500)}` : ''}`,
+        response.status,
+      );
+    }
+
+    const json = (await response.json()) as { data?: T; errors?: GraphqlError[] };
+
+    if (json.errors && json.errors.length > 0) {
+      const first = json.errors[0]!;
+      const code = first.extensions?.code ?? first.extensions?.subCode;
+      const message = first.extensions?.userFriendlyMessage ?? first.message;
+      throw new TwentyMcpClientError(message, undefined, { code, errors: json.errors });
+    }
+
+    if (json.data === undefined) {
+      throw new TwentyMcpClientError('Twenty /metadata returned no data and no errors');
+    }
+
+    return json.data;
   }
 }
