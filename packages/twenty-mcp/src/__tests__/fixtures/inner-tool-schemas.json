@@ -170,6 +170,27 @@
         }
       },
       "forbiddenTopLevel": ["data", "filter", "input"]
+    },
+    "createOneNoteTarget": {
+      "$shape": "GraphQL mutation — variables: { data: { noteId, targetCompanyId?, targetPersonId?, targetOpportunityId? } }",
+      "$comment": "Bypasses the record-crud workflow gate by routing through Twenty's GraphQL createOne resolver. The fixture validates the GraphQL `variables` payload, not an execute_tool arguments payload.",
+      "schema": {
+        "type": "object",
+        "required": ["data"],
+        "properties": {
+          "data": {
+            "type": "object",
+            "required": ["noteId"],
+            "properties": {
+              "noteId": { "type": "string" },
+              "targetCompanyId": { "type": ["string", "null"] },
+              "targetPersonId": { "type": ["string", "null"] },
+              "targetOpportunityId": { "type": ["string", "null"] }
+            }
+          }
+        }
+      },
+      "forbiddenTopLevel": ["object", "filter", "noteId"]
     }
   }
 }

@@ -129,3 +129,5 @@ Plans and retrospectives live in [plans/](./plans/):
 - [initial-design.md](./plans/initial-design.md) — the original design (tool surface, wrapper architecture, agent config snippets)
 - [crm-wrapper-audit-fix.md](./plans/crm-wrapper-audit-fix.md) — audit + patch for the CRM wrapper shape bugs
 - [crm-wrapper-audit-fix-retrospective.md](./plans/crm-wrapper-audit-fix-retrospective.md) — what shipped, why it shipped, and the contract-test layer added so it can't recur
+- [note-target-linking-fix.md](./plans/note-target-linking-fix.md) — `link_note_to_record` tool that bypasses Twenty's record-crud workflow gate via GraphQL `createOneNoteTarget`
+- [note-target-linking-fix-retrospective.md](./plans/note-target-linking-fix-retrospective.md) — the gate didn't say what its name implied; lessons on multi-path APIs

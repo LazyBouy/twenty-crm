@@ -15,6 +15,7 @@ import Ajv from 'ajv';
 import { buildAccessHandlers } from '../tools/access';
 import { buildCrmHandlers } from '../tools/crm';
 import { buildMetadataHandlers } from '../tools/metadata';
+import { buildNoteTargetHandlers } from '../tools/note-targets';
 import { buildViewHandlers } from '../tools/views';
 import { buildWorkflowHandlers } from '../tools/workflows';
 import type { TwentyMcpClient } from '../twenty-mcp-client';
@@ -337,6 +338,31 @@ describe('contract: wrapper output shape vs Twenty inner-tool schemas', () => {
       const captured = cap.lastInner();
       expect(captured.toolName).toBe('create_complete_workflow');
       assertContract(captured.toolName, captured.args);
+    });
+  });
+
+  describe('note-targets.ts (GraphQL transport — bypasses workflow gate)', () => {
+    it('linkNoteToRecord emits createOneNoteTarget mutation with valid variables shape', async () => {
+      const cap = makeCapturingClient();
+      const handlers = buildNoteTargetHandlers(cap.client);
+      await handlers.linkNoteToRecord({
+        noteId: '00000000-0000-0000-0000-000000000001',
+        targetCompanyId: '00000000-0000-0000-0000-000000000002',
+      });
+      const { query, variables } = cap.lastGraphql();
+      expect(query).toContain('createOneNoteTarget');
+      assertContract('createOneNoteTarget', variables);
+    });
+
+    it('routes via graphqlMutation, never via execute_tool (the whole point)', async () => {
+      const cap = makeCapturingClient();
+      const handlers = buildNoteTargetHandlers(cap.client);
+      await handlers.linkNoteToRecord({
+        noteId: '00000000-0000-0000-0000-000000000001',
+        targetPersonId: '00000000-0000-0000-0000-000000000003',
+      });
+      // toolsCall MUST NOT have been called — that path hits the workflow gate.
+      expect(() => cap.lastInner()).toThrow();
     });
   });
 

@@ -7,6 +7,7 @@ const access_1 = require("./tools/access");
 const crm_1 = require("./tools/crm");
 const discovery_1 = require("./tools/discovery");
 const metadata_1 = require("./tools/metadata");
+const note_targets_1 = require("./tools/note-targets");
 const views_1 = require("./tools/views");
 const workflows_1 = require("./tools/workflows");
 const twenty_mcp_client_1 = require("./twenty-mcp-client");
@@ -34,6 +35,12 @@ const createServer = ({ twentyBaseUrl, twentyApiKey, fetchImpl, enableMetadata =
     server.registerTool('create_record', crm_1.crmToolDefinitions.create_record, async (args) => crm.createRecord(args));
     server.registerTool('update_record', crm_1.crmToolDefinitions.update_record, async (args) => crm.updateRecord(args));
     server.registerTool('delete_record', crm_1.crmToolDefinitions.delete_record, async (args) => crm.deleteRecord(args));
+    // Note-target linking — bypasses Twenty's record-crud workflow gate via
+    // GraphQL `createOneNoteTarget` because noteTarget is an isSystem object
+    // that the standard execute_tool path refuses to create. Always registered
+    // (not gated behind enableMetadata) since it's a baseline CRM linkage op.
+    const noteTargets = (0, note_targets_1.buildNoteTargetHandlers)(client);
+    server.registerTool('link_note_to_record', note_targets_1.noteTargetToolDefinitions.link_note_to_record, async (args) => noteTargets.linkNoteToRecord(args));
     // Metadata + views + access + workflow tools are opt-in via
     // TWENTY_MCP_ENABLE_METADATA. They power the crm-administration sub-agent
     // pod; existing CRM-only deployments stay untouched when the flag is unset.

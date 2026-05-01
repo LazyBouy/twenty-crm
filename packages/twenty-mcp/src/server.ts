@@ -12,6 +12,10 @@ import {
   buildMetadataHandlers,
   metadataToolDefinitions,
 } from './tools/metadata';
+import {
+  buildNoteTargetHandlers,
+  noteTargetToolDefinitions,
+} from './tools/note-targets';
 import { buildViewHandlers, viewToolDefinitions } from './tools/views';
 import { buildWorkflowHandlers, workflowToolDefinitions } from './tools/workflows';
 import { TwentyMcpClient } from './twenty-mcp-client';
@@ -71,6 +75,18 @@ export const createServer = ({
   );
   server.registerTool('delete_record', crmToolDefinitions.delete_record, async (args) =>
     crm.deleteRecord(args as Parameters<typeof crm.deleteRecord>[0]),
+  );
+
+  // Note-target linking — bypasses Twenty's record-crud workflow gate via
+  // GraphQL `createOneNoteTarget` because noteTarget is an isSystem object
+  // that the standard execute_tool path refuses to create. Always registered
+  // (not gated behind enableMetadata) since it's a baseline CRM linkage op.
+  const noteTargets = buildNoteTargetHandlers(client);
+  server.registerTool(
+    'link_note_to_record',
+    noteTargetToolDefinitions.link_note_to_record,
+    async (args) =>
+      noteTargets.linkNoteToRecord(args as Parameters<typeof noteTargets.linkNoteToRecord>[0]),
   );
 
   // Metadata + views + access + workflow tools are opt-in via

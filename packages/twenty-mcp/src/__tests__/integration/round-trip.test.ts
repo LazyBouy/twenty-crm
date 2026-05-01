@@ -16,6 +16,7 @@
  *   npx jest src/__tests__/integration --testTimeout 30000
  */
 import { buildCrmHandlers } from '../../tools/crm';
+import { buildNoteTargetHandlers } from '../../tools/note-targets';
 import { TwentyMcpClient, type ToolsCallResult } from '../../twenty-mcp-client';
 
 const enabled = process.env.TWENTY_MCP_INTEGRATION === '1';
@@ -99,5 +100,62 @@ describeIfEnabled('integration: people CRUD round-trip', () => {
     if (!createdId) throw new Error('createdId not set');
     const r = unwrap(await crm.deleteRecord({ object: 'person', id: createdId }));
     expect(r.success).toBe(true);
+  });
+});
+
+/**
+ * link_note_to_record verifies the GraphQL bypass works against a real Twenty.
+ * If this passes, the workflow-gate workaround is genuinely effective.
+ */
+describeIfEnabled('integration: link_note_to_record (GraphQL bypass)', () => {
+  if (enabled && !apiKey) {
+    throw new Error('TWENTY_MCP_INTEGRATION=1 but TWENTY_API_KEY is not set');
+  }
+
+  const client = new TwentyMcpClient({ baseUrl, apiKey });
+  const crm = buildCrmHandlers(client);
+  const noteTargets = buildNoteTargetHandlers(client);
+
+  let companyId: string | undefined;
+  let noteId: string | undefined;
+  const uniq = `mcp-link-${Date.now()}`;
+
+  it('creates a company', async () => {
+    const r = unwrap(
+      await crm.createRecord({
+        object: 'company',
+        data: { name: `MCP-Link-Co-${uniq}` },
+      }),
+    );
+    expect(r.success).toBe(true);
+    companyId = r.result.id as string;
+  });
+
+  it('creates a note (record-crud path — note is NOT isSystem so it works)', async () => {
+    const r = unwrap(
+      await crm.createRecord({
+        object: 'note',
+        data: { title: `Eval ${uniq}`, bodyV2: { markdown: 'integration test' } },
+      }),
+    );
+    expect(r.success).toBe(true);
+    noteId = r.result.id as string;
+  });
+
+  it('links the note to the company via the GraphQL bypass', async () => {
+    if (!noteId || !companyId) throw new Error('noteId / companyId not set');
+    const r = unwrap(
+      await noteTargets.linkNoteToRecord({ noteId, targetCompanyId: companyId }),
+    );
+    expect(r.success).toBe(true);
+    // result is the GraphQL response { createOneNoteTarget: {...} }
+    const noteTarget = (r.result as { createOneNoteTarget?: any }).createOneNoteTarget;
+    expect(noteTarget?.noteId).toBe(noteId);
+    expect(noteTarget?.targetCompanyId).toBe(companyId);
+  });
+
+  it('cleanup: delete the company and note', async () => {
+    if (companyId) await crm.deleteRecord({ object: 'company', id: companyId });
+    if (noteId) await crm.deleteRecord({ object: 'note', id: noteId });
   });
 });
