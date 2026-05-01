@@ -124,4 +124,8 @@ npx nx typecheck twenty-mcp
 
 ## Design
 
-See [PLAN.md](./PLAN.md) for the full design rationale, tool surface, and verification plan.
+Plans and retrospectives live in [plans/](./plans/):
+
+- [initial-design.md](./plans/initial-design.md) — the original design (tool surface, wrapper architecture, agent config snippets)
+- [crm-wrapper-audit-fix.md](./plans/crm-wrapper-audit-fix.md) — audit + patch for the CRM wrapper shape bugs
+- [crm-wrapper-audit-fix-retrospective.md](./plans/crm-wrapper-audit-fix-retrospective.md) — what shipped, why it shipped, and the contract-test layer added so it can't recur

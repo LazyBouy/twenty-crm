@@ -19,7 +19,10 @@ exports.discoveryToolDefinition = {
         'Call with no arguments to see a brief catalog of available tools grouped by category. ' +
         'Pass {focus: "<tool_name>"} to fetch the full JSON Schema for a single tool. ' +
         'Pass {query: "..."} or {category: "..."} to narrow the catalog. ' +
-        'This tool is read-only — it never invokes tools. Use the dedicated record tools (search_records / get_record / create_record / update_record / delete_record) or the agent\'s normal tool-calling flow to actually perform actions.',
+        'This tool is read-only — it never invokes tools. ' +
+        'AUTHORITATIVE SCHEMA: when invoking the convenience CRUD tools (search_records / create_record / update_record / etc.), ' +
+        'their forwarded payload must satisfy Twenty\'s INNER schema (the convenience wrapper just spreads `data` / `filter` for you). ' +
+        'If your input doesn\'t fit the wrapper\'s documented shape, call discovery({focus: "<inner_tool>"}) — e.g. {focus: "create_company"} — to read the exact field list before invoking.',
     inputSchema: exports.discoveryInputSchema.shape,
     annotations: { readOnlyHint: true, idempotentHint: true },
 };

@@ -10,6 +10,7 @@
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.18.0",
+    "ajv": "^8.17.1",
     "dotenv": "^16.4.5",
     "pluralize": "^8.0.0",
     "zod": "^4.1.11"

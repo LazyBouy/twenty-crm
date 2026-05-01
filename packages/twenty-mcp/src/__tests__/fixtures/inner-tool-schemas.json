@@ -1,0 +1,175 @@
+{
+  "$comment": "Inner-tool schema fixture — what Twenty's MCP /mcp endpoint accepts for each `execute_tool` call. Used by contract.test.ts to validate that wrapper handlers forward Twenty-shaped payloads. Two components per entry: `schema` (a JSON Schema validated with ajv when present) and `forbiddenTopLevel` (a list of keys that must NOT appear at the top of the forwarded args — catches the wrapper-bug class even when we don't have a full per-object schema). Refresh via scripts/capture-inner-schemas.ts when Twenty's server changes.",
+  "$source": "Hand-curated initially from packages/twenty-server/src/engine/core-modules/record-crud/zod-schemas/*.ts and **/tools/*.factory.ts. Refresh via the capture script.",
+  "tools": {
+    "find_<plural>": {
+      "$shape": "Twenty's find_<plural> generated per-object — top-level field filters spread alongside fixed keys. We can't enumerate field names statically (per-object), so the fixture only forbids wrapper-only keys.",
+      "schema": null,
+      "forbiddenTopLevel": ["data", "filter", "object", "query", "fields"]
+    },
+    "find_one_<singular>": {
+      "$shape": "{ id: uuid }",
+      "schema": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id"],
+        "properties": {
+          "id": { "type": "string", "minLength": 1 }
+        }
+      },
+      "forbiddenTopLevel": ["data", "filter", "object", "fields"]
+    },
+    "create_<singular>": {
+      "$shape": "{ ...flat field keys at top level } — additionalProperties: false on the live schema",
+      "schema": null,
+      "forbiddenTopLevel": ["data", "filter", "object", "id"]
+    },
+    "update_<singular>": {
+      "$shape": "{ id: uuid, ...flat field keys at top level }",
+      "schema": null,
+      "forbiddenTopLevel": ["data", "filter", "object"]
+    },
+    "delete_<singular>": {
+      "$shape": "{ id: uuid }",
+      "schema": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id"],
+        "properties": {
+          "id": { "type": "string", "minLength": 1 }
+        }
+      },
+      "forbiddenTopLevel": ["data", "filter", "object"]
+    },
+    "create_object_metadata": {
+      "$shape": "Flat: nameSingular, namePlural, labelSingular, labelPlural, etc.",
+      "schema": null,
+      "forbiddenTopLevel": ["data", "filter", "input"]
+    },
+    "update_object_metadata": {
+      "$shape": "{ id, ...partial fields }",
+      "schema": null,
+      "forbiddenTopLevel": ["data", "filter", "input", "update"]
+    },
+    "create_field_metadata": {
+      "$shape": "Flat: objectMetadataId, type, name, label, etc.",
+      "schema": null,
+      "forbiddenTopLevel": ["data", "filter", "input"]
+    },
+    "update_field_metadata": {
+      "$shape": "{ id, ...partial fields }",
+      "schema": null,
+      "forbiddenTopLevel": ["data", "filter", "input", "update"]
+    },
+    "create_many_field_metadata": {
+      "$shape": "{ fields: [...] } — wrapper key is `fields`",
+      "schema": {
+        "type": "object",
+        "required": ["fields"],
+        "properties": {
+          "fields": { "type": "array", "minItems": 1 }
+        }
+      },
+      "forbiddenTopLevel": ["data", "filter"]
+    },
+    "create_many_relation_fields": {
+      "$shape": "{ relations: [...] } — wrapper key is `relations`",
+      "schema": {
+        "type": "object",
+        "required": ["relations"],
+        "properties": {
+          "relations": { "type": "array", "minItems": 1 }
+        }
+      },
+      "forbiddenTopLevel": ["data", "filter"]
+    },
+    "create_view": {
+      "$shape": "Flat: name, objectNameSingular, visibility, type?, icon?, etc.",
+      "schema": null,
+      "forbiddenTopLevel": ["data", "filter", "input"]
+    },
+    "update_view": {
+      "$shape": "{ id, name?, icon? }",
+      "schema": null,
+      "forbiddenTopLevel": ["data", "filter", "input", "update"]
+    },
+    "create_view_field": {
+      "schema": null,
+      "forbiddenTopLevel": ["data", "filter", "input"]
+    },
+    "update_view_field": {
+      "schema": null,
+      "forbiddenTopLevel": ["data", "filter", "input", "update"]
+    },
+    "create_many_view_fields": {
+      "$shape": "{ viewFields: [...] }",
+      "schema": {
+        "type": "object",
+        "required": ["viewFields"],
+        "properties": {
+          "viewFields": { "type": "array", "minItems": 1 }
+        }
+      },
+      "forbiddenTopLevel": ["data", "filter"]
+    },
+    "create_view_filter": {
+      "schema": null,
+      "forbiddenTopLevel": ["data", "filter", "input"]
+    },
+    "update_view_filter": {
+      "schema": null,
+      "forbiddenTopLevel": ["data", "filter", "input", "update"]
+    },
+    "create_view_sort": {
+      "schema": null,
+      "forbiddenTopLevel": ["data", "filter", "input"]
+    },
+    "create_complete_workflow": {
+      "$shape": "Flat: name, description?, trigger, steps, stepPositions?, edges?, activate?",
+      "schema": null,
+      "forbiddenTopLevel": ["data", "filter", "input"]
+    },
+    "activate_workflow_version": {
+      "schema": {
+        "type": "object",
+        "required": ["workflowVersionId"],
+        "properties": {
+          "workflowVersionId": { "type": "string" }
+        }
+      },
+      "forbiddenTopLevel": ["data", "filter", "input"]
+    },
+    "deactivate_workflow_version": {
+      "schema": {
+        "type": "object",
+        "required": ["workflowVersionId"],
+        "properties": {
+          "workflowVersionId": { "type": "string" }
+        }
+      },
+      "forbiddenTopLevel": ["data", "filter", "input"]
+    },
+    "create_workflow_version_step": {
+      "schema": null,
+      "forbiddenTopLevel": ["data", "filter", "input"]
+    },
+    "update_workflow_version_step": {
+      "schema": null,
+      "forbiddenTopLevel": ["data", "filter", "input", "update"]
+    },
+    "create_workflow_version_edge": {
+      "schema": null,
+      "forbiddenTopLevel": ["data", "filter", "input"]
+    },
+    "create_draft_from_workflow_version": {
+      "schema": {
+        "type": "object",
+        "required": ["workflowVersionId"],
+        "properties": {
+          "workflowVersionId": { "type": "string" }
+        }
+      },
+      "forbiddenTopLevel": ["data", "filter", "input"]
+    }
+  }
+}
