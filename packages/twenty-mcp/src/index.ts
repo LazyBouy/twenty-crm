@@ -25,6 +25,7 @@ const main = async (): Promise<void> => {
   const mcpServer = createServer({
     twentyBaseUrl: config.twentyBaseUrl,
     twentyApiKey: config.twentyApiKey,
+    enableMetadata: config.enableMetadata,
   });
 
   // Stateless transport: one Transport per request, per the MCP SDK pattern.

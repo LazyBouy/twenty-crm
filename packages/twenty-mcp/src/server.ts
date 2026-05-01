@@ -7,6 +7,10 @@ import {
   discoveryToolDefinition,
   handleDiscovery,
 } from './tools/discovery';
+import {
+  buildMetadataHandlers,
+  metadataToolDefinitions,
+} from './tools/metadata';
 import { TwentyMcpClient } from './twenty-mcp-client';
 
 const SERVER_INFO = {
@@ -18,12 +22,14 @@ export type CreateServerOptions = {
   twentyBaseUrl: string;
   twentyApiKey: string;
   fetchImpl?: typeof fetch;
+  enableMetadata?: boolean;
 };
 
 export const createServer = ({
   twentyBaseUrl,
   twentyApiKey,
   fetchImpl,
+  enableMetadata = false,
 }: CreateServerOptions): McpServer => {
   const client = new TwentyMcpClient({
     baseUrl: twentyBaseUrl,
@@ -63,6 +69,44 @@ export const createServer = ({
   server.registerTool('delete_record', crmToolDefinitions.delete_record, async (args) =>
     crm.deleteRecord(args as Parameters<typeof crm.deleteRecord>[0]),
   );
+
+  // Metadata tools (objects/fields/relations + the apply_plan dispatcher) are
+  // opt-in via TWENTY_MCP_ENABLE_METADATA. They power the crm-administration
+  // sub-agent pod; existing CRM-only deployments stay untouched when the flag
+  // is unset.
+  if (enableMetadata) {
+    const metadata = buildMetadataHandlers(client);
+
+    server.registerTool('metadata_query', metadataToolDefinitions.metadata_query, async (args) =>
+      metadata.metadataQuery(args as Parameters<typeof metadata.metadataQuery>[0]),
+    );
+    server.registerTool(
+      'metadata_create_object',
+      metadataToolDefinitions.metadata_create_object,
+      async (args) =>
+        metadata.metadataCreateObject(args as Parameters<typeof metadata.metadataCreateObject>[0]),
+    );
+    server.registerTool(
+      'metadata_create_field',
+      metadataToolDefinitions.metadata_create_field,
+      async (args) =>
+        metadata.metadataCreateField(args as Parameters<typeof metadata.metadataCreateField>[0]),
+    );
+    server.registerTool(
+      'metadata_create_relation',
+      metadataToolDefinitions.metadata_create_relation,
+      async (args) =>
+        metadata.metadataCreateRelation(
+          args as Parameters<typeof metadata.metadataCreateRelation>[0],
+        ),
+    );
+    server.registerTool(
+      'metadata_apply_plan',
+      metadataToolDefinitions.metadata_apply_plan,
+      async (args) =>
+        metadata.metadataApplyPlan(args as Parameters<typeof metadata.metadataApplyPlan>[0]),
+    );
+  }
 
   return server;
 };

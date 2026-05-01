@@ -1,8 +1,10 @@
 "use strict";
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.crmToolDefinitions = exports.buildCrmHandlers = exports.deleteInputSchema = exports.updateInputSchema = exports.createInputSchema = exports.getInputSchema = exports.searchInputSchema = exports.innerToolName = void 0;
-const tslib_1 = require("tslib");
-const pluralize_1 = tslib_1.__importDefault(require("pluralize"));
+const pluralize_1 = __importDefault(require("pluralize"));
 const zod_1 = require("zod");
 /**
  * Twenty exposes per-object CRUD tools using a predictable naming pattern derived

@@ -25,6 +25,7 @@ const main = async () => {
     const mcpServer = (0, server_1.createServer)({
         twentyBaseUrl: config.twentyBaseUrl,
         twentyApiKey: config.twentyApiKey,
+        enableMetadata: config.enableMetadata,
     });
     // Stateless transport: one Transport per request, per the MCP SDK pattern.
     // Avoids needing session bookkeeping in v1.

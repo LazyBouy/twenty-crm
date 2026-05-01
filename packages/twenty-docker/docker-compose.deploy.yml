@@ -94,6 +94,9 @@ services:
       TWENTY_API_KEY: ${TWENTY_API_KEY}
       MCP_BIND: 0.0.0.0
       MCP_PORT: ${MCP_PORT:-4441}
+      # Opt-in flag for the metadata_* tool family (objects/fields/relations/apply_plan)
+      # used by the crm-administration sub-agent pod. Unset = not registered.
+      TWENTY_MCP_ENABLE_METADATA: ${TWENTY_MCP_ENABLE_METADATA:-}
     ports:
       # Bind to localhost on the host by default — the proxy has no inbound auth.
       # Set MCP_HOST=0.0.0.0 in .env to expose on all interfaces (only do so behind a trusted proxy).

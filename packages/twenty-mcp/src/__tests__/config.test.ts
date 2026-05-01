@@ -12,8 +12,33 @@ describe('loadConfig', () => {
       twentyApiKey: 'k',
       mcpBind: '127.0.0.1',
       mcpPort: 4441,
+      enableMetadata: false,
     });
   });
+
+  it.each(['1', 'true', 'TRUE', 'yes', 'on'])(
+    'enables metadata when TWENTY_MCP_ENABLE_METADATA=%s',
+    (val) => {
+      const cfg = loadConfig({
+        TWENTY_BASE_URL: 'http://localhost:4440',
+        TWENTY_API_KEY: 'k',
+        TWENTY_MCP_ENABLE_METADATA: val,
+      } as NodeJS.ProcessEnv);
+      expect(cfg.enableMetadata).toBe(true);
+    },
+  );
+
+  it.each(['0', 'false', 'no', ''])(
+    'leaves metadata disabled for falsy/unrecognized TWENTY_MCP_ENABLE_METADATA=%s',
+    (val) => {
+      const cfg = loadConfig({
+        TWENTY_BASE_URL: 'http://localhost:4440',
+        TWENTY_API_KEY: 'k',
+        TWENTY_MCP_ENABLE_METADATA: val,
+      } as NodeJS.ProcessEnv);
+      expect(cfg.enableMetadata).toBe(false);
+    },
+  );
 
   it('respects MCP_BIND and MCP_PORT overrides', () => {
     const cfg = loadConfig({
