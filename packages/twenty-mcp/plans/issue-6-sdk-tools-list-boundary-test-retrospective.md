@@ -3,7 +3,7 @@
 > Issue(s): #6
 > Plan: packages/twenty-mcp/plans/issue-6-sdk-tools-list-boundary-test.md
 > Audit cycles: 1 (clean on first pass)
-> Commit: pending — filled by closer post-commit
+> Commit: e0932346f0e254865f596ab8dabdb40efb0472c6
 > Written: 2026-05-02T00:00:00Z
 
 ## Forecast vs actual
@@ -53,7 +53,10 @@ No critical, high, or medium defects. Proceeded to retrospective.
 ## Diff summary
 
 ```
- packages/twenty-mcp/src/__tests__/sdk-boundary.test.ts | 96 +++++++++++++++++++++++ (new file)
- 1 file created, 96 lines added.
- No production files changed.
+ ...6-sdk-tools-list-boundary-test-audit-round-1.md |  67 ++++++++++
+ ...6-sdk-tools-list-boundary-test-retrospective.md |  59 +++++++++
+ .../plans/issue-6-sdk-tools-list-boundary-test.md  | 147 +++++++++++++++++++++
+ packages/twenty-mcp/plans/low-backlog.md           |   1 +
+ .../twenty-mcp/src/__tests__/sdk-boundary.test.ts  |  96 ++++++++++++++
+ 5 files changed, 370 insertions(+)
 ```

@@ -3,7 +3,7 @@
 > Issue(s): #7 (grouped: #8, #9)
 > Plan: packages/twenty-mcp/plans/issue-7-views-test-infrastructure-brittleness.md
 > Audit cycles: 3 (round 1 BLOCKED, round 2 BLOCKED, round 3 CLEAN)
-> Commit: pending — filled by closer post-commit
+> Commit: 2a462b91650db1acc22776bc4f54792522621275
 > Written: 2026-05-03T00:35:00Z
 
 ## Forecast vs actual
@@ -76,12 +76,18 @@ For each lesson, propose where it should ingrain. The supervisor decides whether
 ## Diff summary
 
 ```
- packages/twenty-mcp/src/__tests__/integration/round-trip.test.ts   |  +30 / -8
- packages/twenty-mcp/src/__tests__/metadata.test.ts                  |  +34 / -0
- packages/twenty-mcp/src/__tests__/views-coverage.test.ts            |  +25 / -6
- packages/twenty-mcp/src/__tests__/views.test.ts                    |  +22 / -0
- packages/twenty-mcp/src/tools/views.ts                              |  +13 / -1
- packages/twenty-mcp/src/utils/parse-metadata-array.ts (NEW)         |  +23 / -0
- packages/twenty-mcp/src/__tests__/parse-metadata-array.test.ts (NEW)|  +23 / -0
- 7 files changed, ~170 insertions, ~15 deletions
+ packages/twenty-mcp/plans/issue-7-views-test-infrastructure-brittleness-audit-round-1.md | 117 ++++
+ packages/twenty-mcp/plans/issue-7-views-test-infrastructure-brittleness-audit-round-2.md | 104 +++
+ packages/twenty-mcp/plans/issue-7-views-test-infrastructure-brittleness-audit-round-3.md | 109 +++
+ packages/twenty-mcp/plans/issue-7-views-test-infrastructure-brittleness-retrospective.md |  87 +++
+ packages/twenty-mcp/plans/issue-7-views-test-infrastructure-brittleness.md               | 721 +++++++++++++++++++++
+ packages/twenty-mcp/plans/low-backlog.md                                                |   4 +
+ packages/twenty-mcp/src/__tests__/integration/round-trip.test.ts                         |  52 +-
+ packages/twenty-mcp/src/__tests__/metadata.test.ts                                       |  34 +
+ packages/twenty-mcp/src/__tests__/parse-metadata-array.test.ts                           |  23 +
+ packages/twenty-mcp/src/__tests__/views-coverage.test.ts                                 |  31 +-
+ packages/twenty-mcp/src/__tests__/views.test.ts                                          |  22 +
+ packages/twenty-mcp/src/tools/views.ts                                                   |  18 +-
+ packages/twenty-mcp/src/utils/parse-metadata-array.ts                                    |  23 +
+ 13 files changed, 1325 insertions(+), 20 deletions(-)
 ```
