@@ -441,6 +441,60 @@ export const buildMetadataHandlers = (
     const skipped: ApplyPlanResult['skipped'] = [];
     let failed: ApplyPlanResult['failed'] = null;
 
+    // Resolution map: populated after each successful mutation with the id returned
+    // by the inner tool. Only mutations applied in THIS run populate the map —
+    // resumeFrom-skipped mutations are intentionally excluded (skipping ≠ resolving).
+    const resolved: Record<string, string> = {};
+
+    // Deep-walks an args object and substitutes $<key> and ${<key>} placeholders
+    // with the resolved id from a prior mutation in this run.
+    const resolvePlaceholders = (
+      value: unknown,
+      map: Record<string, string>,
+    ): unknown => {
+      if (typeof value === 'string') {
+        const simple = value.match(/^\$([a-zA-Z0-9_]+)$/);
+        if (simple?.[1] && map[simple[1]] !== undefined) return map[simple[1]];
+        const braced = value.match(/^\$\{([a-zA-Z0-9_]+)\}$/);
+        if (braced?.[1] && map[braced[1]] !== undefined) return map[braced[1]];
+        return value;
+      }
+      if (Array.isArray(value)) return value.map((v) => resolvePlaceholders(v, map));
+      if (value !== null && typeof value === 'object') {
+        return Object.fromEntries(
+          Object.entries(value as Record<string, unknown>).map(([k, v]) => [k, resolvePlaceholders(v, map)]),
+        );
+      }
+      return value;
+    };
+
+    // Returns the first unresolved $<key> placeholder found in a resolved-args object,
+    // or null if all placeholders were substituted.
+    const findUnresolved = (value: unknown): string | null => {
+      if (typeof value === 'string') {
+        const simple = value.match(/^\$([a-zA-Z0-9_]+)$/);
+        if (simple?.[1]) return value;
+        const braced = value.match(/^\$\{([a-zA-Z0-9_]+)\}$/);
+        if (braced?.[1]) return value;
+        return null;
+      }
+      if (Array.isArray(value)) {
+        for (const v of value) {
+          const found = findUnresolved(v);
+          if (found !== null) return found;
+        }
+        return null;
+      }
+      if (value !== null && typeof value === 'object') {
+        for (const v of Object.values(value as Record<string, unknown>)) {
+          const found = findUnresolved(v);
+          if (found !== null) return found;
+        }
+        return null;
+      }
+      return null;
+    };
+
     for (const m of args.mutations) {
       if (resumeSet.has(m.key)) {
         skipped.push({ key: m.key, op: m.op, reason: 'in_resume_from' });
@@ -455,18 +509,75 @@ export const buildMetadataHandlers = (
         };
         break;
       }
+
+      // Substitute $<key> and ${<key>} placeholders before dispatch.
+      const effectiveArgs = resolvePlaceholders(m.args, resolved) as Record<string, unknown>;
+
+      // Fail fast if any placeholder was not resolved — prevents forwarding
+      // literal placeholder strings to Twenty.
+      const unresolvedPlaceholder = findUnresolved(effectiveArgs);
+      if (unresolvedPlaceholder !== null) {
+        failed = {
+          key: m.key,
+          op: m.op,
+          error: `unresolved placeholder ${unresolvedPlaceholder} — referenced mutation '${unresolvedPlaceholder.replace(/^\$\{?([a-zA-Z0-9_]+)\}?$/, '$1')}' either failed, was skipped, or does not precede this mutation in the plan`,
+        };
+        break;
+      }
+
       try {
         let result: ToolsCallResult;
         if (dispatch.transport === 'inner_tool') {
           const innerArgs = dispatch.argsTransform
-            ? dispatch.argsTransform(m.args as Record<string, unknown>)
-            : (m.args as Record<string, unknown>);
+            ? dispatch.argsTransform(effectiveArgs)
+            : effectiveArgs;
           result = await wrapInExecute(client, dispatch.innerToolName, innerArgs);
         } else {
-          const { query, variables } = dispatch.build(m.args as Record<string, unknown>);
+          const { query, variables } = dispatch.build(effectiveArgs);
           const data = await client.graphqlMutation(query, variables);
           result = wrapGraphqlResult(data);
         }
+
+        // Extract id from the inner-tool's JSON response body for use as placeholder target.
+        // Three shapes are in play:
+        //   Shape 1 — inner-tool transport:   { id: "<uuid>", ... }
+        //   Shape 2 — defensive/flat GraphQL: { success: true, result: { id: "<uuid>", ... } }
+        //   Shape 3 — GraphQL transport:      { success: true, result: { <mutationName>: { id: "<uuid>", ... } } }
+        //             (client.graphqlMutation returns json.data === { <mutationName>: {...} };
+        //              wrapGraphqlResult wraps it as { success: true, result: data };
+        //              so parsed.result.id is undefined — id is one level deeper)
+        // Try all three in order; skip silently if no id is found (not all ops return an id).
+        try {
+          const text = (result.content[0] as { type: string; text: string } | undefined)?.text;
+          if (text) {
+            const parsed = JSON.parse(text) as Record<string, unknown>;
+            const id =
+              // Shape 1
+              (parsed.id as string | undefined) ??
+              // Shape 2
+              ((parsed.result as Record<string, unknown> | undefined)?.id as string | undefined) ??
+              // Shape 3 — walk one level deeper into parsed.result for the first object with an id
+              (() => {
+                const r = parsed.result as Record<string, unknown> | undefined;
+                if (!r) return undefined;
+                for (const v of Object.values(r)) {
+                  if (v && typeof v === 'object' && !Array.isArray(v)) {
+                    const candidate = (v as Record<string, unknown>).id;
+                    if (typeof candidate === 'string') return candidate;
+                  }
+                }
+                return undefined;
+              })();
+            if (id) resolved[m.key] = id;
+          }
+        } catch {
+          // Non-JSON result — no id to extract.
+          // Note: this catch is intentionally broad; it swallows TypeError from undefined
+          // result.content as well as SyntaxError from non-JSON text. Placeholder-id extraction
+          // is best-effort and a missing id should not abort the whole apply-plan. Do NOT narrow
+          // this to SyntaxError only — shape changes would then crash the proxy.
+        }
+
         applied.push({ key: m.key, op: m.op, result });
       } catch (err) {
         failed = {
@@ -549,7 +660,7 @@ export const metadataToolDefinitions = {
   metadata_apply_plan: {
     title: 'Apply an approved metadata mutation plan',
     description:
-      'Execute an ordered list of metadata mutations. Designed for the crm-administration pod\'s plan-then-apply flow: caller stores a plan as a Twenty Note, gets user `apply <hash>` confirmation, then calls this with the parsed mutations array, the SHA-256 it computed, and a `resumeFrom` list of mutation keys already applied per SchemaChangeAudit. Stops on first failure and returns per-mutation status. NOT atomic — Twenty does not roll back partial applies. Supported op kinds: data-model (CREATE_OBJECT/CREATE_FIELD/UPDATE_FIELD/CREATE_RELATION/UPDATE_OBJECT/BULK_CREATE_FIELD), views (CREATE_VIEW/UPDATE_VIEW/CREATE_VIEW_FIELD/UPDATE_VIEW_FIELD/CREATE_VIEW_FILTER/UPDATE_VIEW_FILTER/CREATE_VIEW_SORT), access (CREATE_ROLE/UPDATE_ROLE/UPSERT_OBJECT_PERMISSION/UPSERT_FIELD_PERMISSION/INVITE_MEMBERS/CREATE_API_KEY/REVOKE_API_KEY). Workflows are NOT in this dispatcher — use the workflow_* tools.',
+      'Execute an ordered list of metadata mutations. Designed for the crm-administration pod\'s plan-then-apply flow: caller stores a plan as a Twenty Note, gets user `apply <hash>` confirmation, then calls this with the parsed mutations array, the SHA-256 it computed, and a `resumeFrom` list of mutation keys already applied per SchemaChangeAudit. Stops on first failure and returns per-mutation status. NOT atomic — Twenty does not roll back partial applies.\n\nPlaceholder syntax: in any mutation\'s `args`, use `$<key>` or `${<key>}` to reference the `id` returned by a prior mutation whose `key` matches. Example: if `CREATE_VIEW` has `key: "create_view__my_view"`, a subsequent `CREATE_VIEW_FIELD` can pass `viewId: "$create_view__my_view"` and the proxy will substitute the actual UUID before dispatch. Forward-references (referencing a key that appears LATER in the plan) are not supported — the plan must be ordered so dependencies precede dependents. Mutations skipped via `resumeFrom` do NOT populate the resolution map; if a downstream mutation references `$skipped_key`, it will fail with an unresolved-placeholder error. To recover from a partial apply caused by a placeholder error, fix the plan and use `resumeFrom` for the mutations that already succeeded.\n\nSupported op kinds: data-model (CREATE_OBJECT/CREATE_FIELD/UPDATE_FIELD/CREATE_RELATION/UPDATE_OBJECT/BULK_CREATE_FIELD), views (CREATE_VIEW/UPDATE_VIEW/CREATE_VIEW_FIELD/UPDATE_VIEW_FIELD/CREATE_VIEW_FILTER/UPDATE_VIEW_FILTER/CREATE_VIEW_SORT), access (CREATE_ROLE/UPDATE_ROLE/UPSERT_OBJECT_PERMISSION/UPSERT_FIELD_PERMISSION/INVITE_MEMBERS/CREATE_API_KEY/REVOKE_API_KEY). Workflows are NOT in this dispatcher — use the workflow_* tools.\n\nPlaceholders must be the entire string value (e.g. viewId: "$k1"); embedded placeholders inside larger strings (e.g. "created via $k1") are not substituted and pass through to Twenty literally.',
     inputSchema: metadataApplyPlanInputSchema.shape,
     annotations: { destructiveHint: true, idempotentHint: true },
   },

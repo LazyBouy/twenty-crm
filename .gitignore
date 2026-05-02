@@ -3,7 +3,12 @@
 !**/**/.env.example
 .DS_Store
 /.idea
-.claude/
+# Ignore .claude/ contents by default (settings.local.json, state/, etc.)
+# but track agents/ and skills/ so they apply to every session in this repo.
+# Use .claude/* (not .claude/) so git still descends and the negations apply.
+.claude/*
+!.claude/agents/
+!.claude/skills/
 .cursor/debug-*.log
 **/**/node_modules/
 .cache

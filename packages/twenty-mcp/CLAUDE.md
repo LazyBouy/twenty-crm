@@ -49,6 +49,13 @@ These rules sit upstream of the lessons below. The lessons describe specific bug
 - Work cost = mechanical cost + the consequence of being wrong about your claim.
 - When something feels trivial, ask: *"What assumption am I making, and what happens if it's wrong?"* If the assumption is invisible to you but visible to a consumer, the work is not trivial.
 
+### R6. Post-implementation adversarial audit, by a different actor
+- After the implementer reports done, an actor that did NOT write the implementation reads the diff, tests, and adjacent code adversarially and emits a defect list.
+- For this codebase: the auditor is the `issue-auditor` agent (Opus, separate session, no shared context with implementer). The supervisor then does its own pass on top.
+- "The implementer ran the tests" is not the same as "an adversarial reader looked for what the tests don't cover." R3 is a pre-implementation pre-mortem; R6 is a post-implementation pre-mortem against the actual diff.
+- Defect routing is severity-tiered: critical/high block; medium files a follow-up issue; low annotates the plan. See `.claude/skills/audit-fix/SKILL.md` for the rubric.
+- Skipping the audit because "this fix is small" or "the implementer was careful" is exactly the trivial-because-mechanical framing R5 warns against.
+
 ## Flawed framings to recognize (catalog)
 
 These are the wrong frames that produced every shipped bug. Recognize and name them in flight:
@@ -59,6 +66,7 @@ These are the wrong frames that produced every shipped bug. Recognize and name t
 - **Pattern-applied-without-verification** — copying a naming convention from a peer wrapper file as if it were ground truth. (Bug 5: assumed `roles` query existed; actual name is `getRoles`.)
 - **Imagined-because-plausible** — a field name "feels right" so we shipped it. (Bug 6: `id` on `ObjectPermission`, a composite-key type with no `id`.)
 - **Done-because-foreground-checklist-empty** — declaring work complete because the visible TODO list cleared, not because the system is verified. (The "gated tools — framework in place" framing that quietly hid bugs 5 and 6.)
+- **Audited-because-tests-passed** — the implementer's own test suite is green, so the work shipped without a distinct adversarial reader. Tests cover what their author thought to test; an auditor's job is to find what the author missed. (R6 violation.)
 
 When you catch yourself reaching for one of these, stop. Verify the claim or downgrade the language.
 
@@ -89,6 +97,7 @@ When you catch yourself reaching for one of these, stop. Verify the claim or dow
 - [ ] If a NEW tool was added: per-tool integration smoke added to `__tests__/integration/round-trip.test.ts` AND it passed live against a **local docker-compose Twenty** (NOT VPS)
 - [ ] If a NEW tool is gated behind a feature flag: the flag was lifted and the tool exercised live before this PR was opened (R-rule violation otherwise — see L11)
 - [ ] If the tool uses GraphQL transport: endpoint partition explicit (`/metadata` for admin, `/graphql` for workspace data) and passed to `client.graphqlMutation(...)`
+- [ ] `/audit-fix <plan-path>` ran and reported no critical/high defects (medium → filed as follow-up; low → annotated). Retrospective is on disk before commit.
 
 **Evaluation gates** (rules from the section above; passing the mechanical gates does not satisfy these):
 - [ ] R1 satisfied: every claim of "done" has been backed by an exercised run, not just an implementation
@@ -96,6 +105,7 @@ When you catch yourself reaching for one of these, stop. Verify the claim or dow
 - [ ] R3 satisfied: I named three concrete failure modes that would plausibly surface in the next hour of real use, and either fixed them or documented why they're acceptable
 - [ ] R4 satisfied: every assertion in the PR description has a mechanical verifier in the test suite
 - [ ] R5 satisfied: nothing was skipped, deferred, or downgraded with the framing "trivial" without checking the consequence-of-wrong
+- [ ] R6 satisfied: an actor distinct from the implementer (the `issue-auditor` agent) audited the diff adversarially before commit; defects were routed per severity rubric; retrospective lands on disk pre-commit
 
 **Post-deploy:**
 - [ ] `vps-smoke.test.ts` ran successfully against the VPS (read-only, no destructive ops)

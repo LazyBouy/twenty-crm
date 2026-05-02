@@ -505,3 +505,208 @@ describe('metadata_apply_plan — Phase 4 dispatcher extensions', () => {
     expect(parsed.failed.error).toMatch(/no dispatch entry/);
   });
 });
+
+describe('metadata_apply_plan — placeholder resolution', () => {
+  it('placeholder resolved: $<key> in second mutation args is substituted with id from first mutation result', async () => {
+    // k1 returns {"id":"uuid-from-k1"} — k2 references $k1 as viewId
+    const toolsCall = jest
+      .fn()
+      .mockResolvedValueOnce({
+        content: [{ type: 'text', text: '{"id":"uuid-from-k1"}' }],
+        isError: false,
+      })
+      .mockResolvedValueOnce({
+        content: [{ type: 'text', text: '{"id":"uuid-from-k2"}' }],
+        isError: false,
+      });
+    const client = { toolsCall } as unknown as TwentyMcpClient;
+    const handlers = buildMetadataHandlers(client, STUB_JWT);
+
+    await handlers.metadataApplyPlan({
+      mutations: [
+        {
+          key: 'k1',
+          op: 'CREATE_VIEW',
+          args: { name: 'My View', objectNameSingular: 'company', type: 'TABLE', visibility: 'WORKSPACE' },
+        },
+        {
+          key: 'k2',
+          op: 'CREATE_VIEW_FIELD',
+          args: { viewId: '$k1', fieldMetadataId: '96314745-0000-0000-0000-000000000001', isVisible: true, position: 0 },
+        },
+      ],
+    });
+
+    // Second call must have had viewId substituted to the actual UUID.
+    expect(toolsCall).toHaveBeenCalledTimes(2);
+    const secondCall = toolsCall.mock.calls[1]![1] as { toolName: string; arguments: { viewId: string } };
+    expect(secondCall.toolName).toBe('create_view_field');
+    expect(secondCall.arguments.viewId).toBe('uuid-from-k1');
+  });
+
+  it('unresolved placeholder: mutation with $nonexistent_key fails with isError=true and unresolved placeholder message', async () => {
+    const { toolsCall, client, apiKey } = makeClient();
+    const handlers = buildMetadataHandlers(client, apiKey);
+
+    const result = await handlers.metadataApplyPlan({
+      mutations: [
+        {
+          key: 'k1',
+          op: 'CREATE_VIEW_FIELD',
+          args: { viewId: '$nonexistent_key', fieldMetadataId: 'some-id', isVisible: true, position: 0 },
+        },
+      ],
+    });
+
+    // No inner tool should have been called — the placeholder check fires before dispatch.
+    expect(toolsCall).not.toHaveBeenCalled();
+    expect(result.isError).toBe(true);
+    const parsed = JSON.parse(
+      (result.content[0] as { type: 'text'; text: string }).text,
+    ) as { failed: { key: string; error: string } | null };
+    expect(parsed.failed?.error).toMatch(/unresolved placeholder/);
+    expect(parsed.failed?.error).toContain('nonexistent_key');
+  });
+
+  it('skipped mutation does not populate resolved map: $skipped_key fails, $applied_key resolves', async () => {
+    // k1 is in resumeFrom (skipped), k2 applies and returns an id,
+    // k3 references both $k1 (skipped — should fail) and $k2 (applied — should resolve).
+    // Since k3 uses both placeholders and $k1 is unresolved, the plan should stop at k3.
+    const toolsCall = jest
+      .fn()
+      .mockResolvedValueOnce({
+        content: [{ type: 'text', text: '{"id":"uuid-from-k2"}' }],
+        isError: false,
+      });
+    const client = { toolsCall } as unknown as TwentyMcpClient;
+    const handlers = buildMetadataHandlers(client, STUB_JWT);
+
+    const result = await handlers.metadataApplyPlan({
+      mutations: [
+        {
+          key: 'k1',
+          op: 'CREATE_VIEW',
+          args: { name: 'View 1', objectNameSingular: 'company', type: 'TABLE', visibility: 'WORKSPACE' },
+        },
+        {
+          key: 'k2',
+          op: 'CREATE_VIEW',
+          args: { name: 'View 2', objectNameSingular: 'company', type: 'TABLE', visibility: 'WORKSPACE' },
+        },
+        {
+          key: 'k3',
+          op: 'CREATE_VIEW_FIELD',
+          // $k2 should resolve; $k1 is skipped so it will NOT resolve — expect failure.
+          args: { viewId: '$k1', relatedViewId: '$k2', fieldMetadataId: 'some-id', isVisible: true, position: 0 },
+        },
+      ],
+      resumeFrom: ['k1'],
+    });
+
+    // k2 ran (once), k3 should fail due to unresolved $k1.
+    expect(toolsCall).toHaveBeenCalledTimes(1);
+    const parsed = JSON.parse(
+      (result.content[0] as { type: 'text'; text: string }).text,
+    ) as {
+      applied: { key: string }[];
+      skipped: { key: string }[];
+      failed: { key: string; error: string } | null;
+    };
+    expect(parsed.skipped.map((s) => s.key)).toContain('k1');
+    expect(parsed.applied.map((a) => a.key)).toContain('k2');
+    expect(parsed.failed?.key).toBe('k3');
+    expect(parsed.failed?.error).toMatch(/unresolved placeholder/);
+    expect(parsed.failed?.error).toContain('k1');
+  });
+
+  it('placeholder resolved across graphql transport: CREATE_ROLE id substituted into UPSERT_OBJECT_PERMISSION roleId', async () => {
+    // k1 = CREATE_ROLE via graphql transport; returns { createOneRole: { id: 'role-uuid', label: 'X' } }
+    // wrapGraphqlResult will wrap that as { success: true, result: { createOneRole: { id: 'role-uuid', label: 'X' } } }
+    // The three-shape extractor must walk into parsed.result.createOneRole.id (Shape 3).
+    // k2 = UPSERT_OBJECT_PERMISSION with roleId: '$k1' — must be substituted to 'role-uuid'.
+    const graphqlMutation = jest
+      .fn()
+      // First call: CREATE_ROLE — return bare data (wrapGraphqlResult wraps it)
+      .mockResolvedValueOnce({ createOneRole: { id: 'role-uuid', label: 'X' } })
+      // Second call: UPSERT_OBJECT_PERMISSION
+      .mockResolvedValueOnce({ upsertObjectPermissions: { success: true } });
+    const client = { toolsCall: jest.fn(), graphqlMutation } as unknown as TwentyMcpClient;
+    const handlers = buildMetadataHandlers(client, STUB_JWT);
+
+    await handlers.metadataApplyPlan({
+      mutations: [
+        {
+          key: 'k1',
+          op: 'CREATE_ROLE',
+          args: { label: 'X', name: 'x', description: '' },
+        },
+        {
+          key: 'k2',
+          op: 'UPSERT_OBJECT_PERMISSION',
+          args: { roleId: '$k1', objectPermissions: [] },
+        },
+      ],
+    });
+
+    // Second graphqlMutation call must have roleId substituted to the actual UUID, NOT '$k1'.
+    // buildUpsertObjectPermissions wraps args as { input: { roleId, objectPermissions } },
+    // so variables.input.roleId is where the substituted value lands.
+    expect(graphqlMutation).toHaveBeenCalledTimes(2);
+    const secondCallVariables = graphqlMutation.mock.calls[1]![1] as {
+      input: { roleId: string; objectPermissions: unknown[] };
+    };
+    expect(secondCallVariables.input.roleId).toBe('role-uuid');
+    expect(secondCallVariables.input.roleId).not.toBe('$k1');
+  });
+
+  it('embedded placeholder passes through literally: only whole-string $<key> is substituted', async () => {
+    // k1 = CREATE_VIEW returns { id: 'uuid-1' }
+    // k2 = CREATE_VIEW_FIELD with description: "created via $k1" (embedded — should NOT substitute)
+    //                          and viewId: "$k1" (whole-string — should substitute to 'uuid-1')
+    const toolsCall = jest
+      .fn()
+      .mockResolvedValueOnce({
+        content: [{ type: 'text', text: '{"id":"uuid-1"}' }],
+        isError: false,
+      })
+      .mockResolvedValueOnce({
+        content: [{ type: 'text', text: '{"id":"uuid-2"}' }],
+        isError: false,
+      });
+    const client = { toolsCall, graphqlMutation: jest.fn() } as unknown as TwentyMcpClient;
+    const handlers = buildMetadataHandlers(client, STUB_JWT);
+
+    const result = await handlers.metadataApplyPlan({
+      mutations: [
+        {
+          key: 'k1',
+          op: 'CREATE_VIEW',
+          args: { name: 'My View', objectNameSingular: 'company', type: 'TABLE', visibility: 'WORKSPACE' },
+        },
+        {
+          key: 'k2',
+          op: 'CREATE_VIEW_FIELD',
+          args: {
+            description: 'created via $k1',
+            viewId: '$k1',
+            fieldMetadataId: '96314745-0000-0000-0000-000000000001',
+            isVisible: true,
+            position: 0,
+          },
+        },
+      ],
+    });
+
+    // The plan should succeed (no error for the embedded placeholder — it's a pass-through).
+    expect(result.isError).toBeFalsy();
+    expect(toolsCall).toHaveBeenCalledTimes(2);
+    const secondCallArgs = toolsCall.mock.calls[1]![1] as {
+      toolName: string;
+      arguments: { description: string; viewId: string };
+    };
+    // Whole-string placeholder substituted.
+    expect(secondCallArgs.arguments.viewId).toBe('uuid-1');
+    // Embedded placeholder passed through literally (not substituted).
+    expect(secondCallArgs.arguments.description).toBe('created via $k1');
+  });
+});
