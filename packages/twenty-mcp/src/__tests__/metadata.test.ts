@@ -711,6 +711,113 @@ describe('metadata_apply_plan — placeholder resolution', () => {
   });
 });
 
+// --- apply_plan operand validation (Layer 2 — symmetric with Layer 1 in views.ts) ---
+
+/**
+ * Helper: create a toolsCall mock that returns a get_field_metadata response
+ * with the given field type for any get_field_metadata call, and 'ok' for others.
+ */
+const makeMetadataClientWithFieldType = (fieldType: string) => {
+  const fieldResponse = {
+    content: [{ type: 'text', text: JSON.stringify([{ id: '00000000-0000-0000-0000-000000000003', type: fieldType, name: 'testField' }]) }],
+    isError: false,
+  };
+  const toolsCall = jest.fn().mockImplementation((_method: string, args: { toolName?: string }) => {
+    if (args.toolName === 'get_field_metadata') return Promise.resolve(fieldResponse);
+    return Promise.resolve({ content: [{ type: 'text', text: 'ok' }] });
+  });
+  const graphqlMutation = jest.fn().mockResolvedValue({ stub: true });
+
+  return {
+    toolsCall,
+    graphqlMutation,
+    client: { toolsCall, graphqlMutation } as unknown as TwentyMcpClient,
+    apiKey: STUB_JWT,
+  };
+};
+
+describe('metadata_apply_plan — operand validation (Layer 2)', () => {
+  it('apply_plan CREATE_VIEW_FILTER operand rejected', async () => {
+    // Two-mutation plan: CREATE_VIEW (mock success) + CREATE_VIEW_FILTER with bad operand.
+    const { toolsCall, client, apiKey } = makeMetadataClientWithFieldType('DATE_TIME');
+    const handlers = buildMetadataHandlers(client, apiKey);
+
+    // First call for CREATE_VIEW returns { id: 'view-uuid' }
+    toolsCall.mockImplementationOnce((_: string, args: { toolName?: string }) => {
+      if (args.toolName === 'create_view') {
+        return Promise.resolve({ content: [{ type: 'text', text: '{"id":"view-uuid"}' }], isError: false });
+      }
+      return Promise.resolve({ content: [{ type: 'text', text: 'ok' }] });
+    });
+
+    const result = await handlers.metadataApplyPlan({
+      mutations: [
+        {
+          key: 'k1',
+          op: 'CREATE_VIEW',
+          args: { name: 'My View', objectNameSingular: 'company', visibility: 'WORKSPACE' },
+        },
+        {
+          key: 'k2',
+          op: 'CREATE_VIEW_FILTER',
+          args: {
+            viewId: 'view-uuid',
+            fieldMetadataId: '00000000-0000-0000-0000-000000000003',
+            operand: 'GREATER_THAN_OR_EQUAL',
+            value: '2026-01-01T00:00:00Z',
+          },
+        },
+      ],
+    });
+
+    const parsed = JSON.parse(
+      (result.content[0] as { type: 'text'; text: string }).text,
+    ) as { applied: { key: string }[]; failed: { op: string; error: string } | null };
+
+    expect(parsed.failed?.op).toBe('CREATE_VIEW_FILTER');
+    expect(parsed.failed?.error).toMatch(/not valid for DATE_TIME/);
+    expect(parsed.applied.map((a) => a.key)).toEqual(['k1']);
+
+    // create_view_filter must NOT have been called
+    const createCalls = toolsCall.mock.calls.filter(
+      (c) => (c[1] as { toolName: string })?.toolName === 'create_view_filter',
+    );
+    expect(createCalls).toHaveLength(0);
+  });
+
+  it('apply_plan UPDATE_VIEW_FILTER without fieldMetadataId fails closed', async () => {
+    const { toolsCall, client, apiKey } = makeMetadataClientWithFieldType('SELECT');
+    const handlers = buildMetadataHandlers(client, apiKey);
+
+    const result = await handlers.metadataApplyPlan({
+      mutations: [
+        {
+          key: 'k1',
+          op: 'UPDATE_VIEW_FILTER',
+          args: {
+            id: '00000000-0000-0000-0000-000000000001',
+            operand: 'IS_AFTER',
+            // no fieldMetadataId
+          },
+        },
+      ],
+    });
+
+    const parsed = JSON.parse(
+      (result.content[0] as { type: 'text'; text: string }).text,
+    ) as { failed: { op: string; error: string } | null };
+
+    expect(parsed.failed?.op).toBe('UPDATE_VIEW_FILTER');
+    expect(parsed.failed?.error).toMatch(/requires fieldMetadataId/);
+
+    // update_view_filter must NOT have been called
+    const updateCalls = toolsCall.mock.calls.filter(
+      (c) => (c[1] as { toolName: string })?.toolName === 'update_view_filter',
+    );
+    expect(updateCalls).toHaveLength(0);
+  });
+});
+
 describe('metadata_compute_plan_hash', () => {
   it('compute_plan_hash returns the same hash as sha256OfMutations', () => {
     const { toolsCall, graphqlMutation, client, apiKey } = makeClient();

@@ -4,7 +4,7 @@ import { z } from 'zod';
 
 import type { ToolsCallResult, TwentyMcpClient } from '../twenty-mcp-client';
 import { accessDispatchEntries } from './access';
-import { viewsDispatchEntries } from './views';
+import { assertOperandCompatible, viewsDispatchEntries } from './views';
 
 /**
  * Twenty's in-tree MCP catalog already exposes a comprehensive set of
@@ -533,6 +533,35 @@ export const buildMetadataHandlers = (
           error: `unresolved placeholder ${unresolvedPlaceholder} — referenced mutation '${unresolvedPlaceholder.replace(/^\$\{?([a-zA-Z0-9_]+)\}?$/, '$1')}' either failed, was skipped, or does not precede this mutation in the plan`,
         };
         break;
+      }
+
+      // Layer 2 operand validation — symmetric with Layer 1 in views.ts.
+      // Both layers call assertOperandCompatible from the same export; drift is
+      // impossible because they share the same function.
+      if (
+        (m.op === 'CREATE_VIEW_FILTER' || m.op === 'UPDATE_VIEW_FILTER') &&
+        typeof effectiveArgs.operand === 'string'
+      ) {
+        if (typeof effectiveArgs.fieldMetadataId !== 'string') {
+          // FAIL CLOSED: operand present but no fieldMetadataId — cannot validate.
+          failed = {
+            key: m.key,
+            op: m.op,
+            error:
+              `apply_plan ${m.op} requires fieldMetadataId when updating operand. ` +
+              'Look up via metadata_query({kind: \'view_filters\', args: {viewId: <viewId>}}) and supply it in the plan.',
+          };
+          break;
+        }
+        const check = await assertOperandCompatible(
+          client,
+          effectiveArgs.fieldMetadataId,
+          effectiveArgs.operand,
+        );
+        if (!check.valid) {
+          failed = { key: m.key, op: m.op, error: check.error };
+          break;
+        }
       }
 
       try {

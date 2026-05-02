@@ -18,6 +18,7 @@
  * The companion vps-smoke.test.ts is the read-only counterpart for production.
  */
 import { buildCrmHandlers } from '../../tools/crm';
+import { buildMetadataHandlers } from '../../tools/metadata';
 import { buildNoteTargetHandlers } from '../../tools/note-targets';
 import { TwentyMcpClient, type ToolsCallResult } from '../../twenty-mcp-client';
 
@@ -201,5 +202,81 @@ describeIfDestructive('integration: link_note_to_record (GraphQL bypass)', () =>
   it('cleanup: delete the company and note', async () => {
     if (companyId) await crm.deleteRecord({ object: 'company', id: companyId });
     if (noteId) await crm.deleteRecord({ object: 'note', id: noteId });
+  });
+});
+
+/**
+ * Operand validation rejection test.
+ * Verifies that apply_plan rejects an invalid operand BEFORE it reaches Twenty.
+ * This test is deliberately non-destructive: the bad filter is rejected by the
+ * wrapper layer and never written to Twenty.
+ *
+ * Uses a known DATE_TIME field id (createdAt, captured from local stack during
+ * round 2 implementation). The field is system-owned so it always exists.
+ *
+ * Field id: 5c1f7b98-a454-413a-8ef3-f0dcf5820ca7 (createdAt, DATE_TIME)
+ * Captured from local stack: 2026-05-02
+ */
+describeIfDestructive('integration: operand validation — invalid operand rejected before reaching Twenty', () => {
+  if (enabled && destructiveOk && !apiKey) {
+    throw new Error('TWENTY_MCP_INTEGRATION=1 but TWENTY_API_KEY is not set');
+  }
+
+  const client = new TwentyMcpClient({ baseUrl, apiKey });
+  // Use a non-existent viewId — the validation fails before it's needed
+  const FAKE_VIEW_ID = '00000000-0000-0000-0000-000000000000';
+  // The createdAt DATE_TIME field — always exists on all workspaces
+  const DATE_TIME_FIELD_ID = '5c1f7b98-a454-413a-8ef3-f0dcf5820ca7';
+
+  it('apply_plan CREATE_VIEW_FILTER with GREATER_THAN_OR_EQUAL on DATE_TIME is rejected by the proxy (never reaches Twenty)', async () => {
+    const metadata = buildMetadataHandlers(client, apiKey);
+
+    const result = await metadata.metadataApplyPlan({
+      mutations: [
+        {
+          key: 'test_invalid_operand',
+          op: 'CREATE_VIEW_FILTER',
+          args: {
+            viewId: FAKE_VIEW_ID,
+            fieldMetadataId: DATE_TIME_FIELD_ID,
+            operand: 'GREATER_THAN_OR_EQUAL',
+            value: '2026-01-01T00:00:00.000Z',
+          },
+        },
+      ],
+    });
+
+    const parsed = JSON.parse(
+      (result.content[0] as { type: 'text'; text: string }).text,
+    ) as {
+      totalMutations: number;
+      applied: Array<{ key: string }>;
+      failed: { op: string; error: string } | null;
+    };
+
+    // The plan fails at the first (only) mutation
+    expect(parsed.totalMutations).toBe(1);
+    expect(parsed.applied).toHaveLength(0);
+    expect(parsed.failed?.op).toBe('CREATE_VIEW_FILTER');
+    expect(parsed.failed?.error).toMatch(/Operand GREATER_THAN_OR_EQUAL is not valid for DATE_TIME/);
+    // result.isError should be true since failed is non-null
+    expect(result.isError).toBe(true);
+
+    // Independent verification: query Twenty's view_filters and assert no row
+    // landed with the bad operand on the DATE_TIME field. Without this step, a
+    // future regression that bypasses the wrapper's rejection would still pass
+    // the assertions above (Twenty would also reject — with a different error).
+    const viewFiltersResult = await metadata.metadataQuery({
+      kind: 'view_filters',
+      args: { limit: 200 },
+    });
+    const viewFiltersText = (viewFiltersResult.content[0] as { type: 'text'; text: string }).text;
+    const viewFiltersParsed = JSON.parse(viewFiltersText) as {
+      result?: Array<{ fieldMetadataId?: string; operand?: string }>;
+    };
+    const leakedRows = (viewFiltersParsed.result ?? []).filter(
+      (row) => row.fieldMetadataId === DATE_TIME_FIELD_ID && row.operand === 'GREATER_THAN_OR_EQUAL',
+    );
+    expect(leakedRows).toEqual([]);
   });
 });

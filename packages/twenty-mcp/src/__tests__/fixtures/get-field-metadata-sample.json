@@ -1,0 +1,9 @@
+{
+  "content": [
+    {
+      "type": "text",
+      "text": "[{\"workspaceId\":\"b8a4c6b5-91a0-4b2d-b5f2-c2bc5a8c8e52\",\"universalIdentifier\":\"20202020-a01b-4002-9b02-2e6f9f4d8c3b\",\"applicationId\":\"2e225e03-9463-47ea-968a-7cd6b9a6905b\",\"id\":\"5c1f7b98-a454-413a-8ef3-f0dcf5820ca7\",\"objectMetadataId\":\"825c8031-610d-41bf-b64f-b8b281b735aa\",\"type\":\"DATE_TIME\",\"name\":\"createdAt\",\"label\":\"Creation date\",\"defaultValue\":\"now\",\"description\":\"Creation date\",\"icon\":\"IconCalendar\",\"standardOverrides\":null,\"options\":null,\"settings\":{\"displayFormat\":\"RELATIVE\"},\"isCustom\":false,\"isActive\":true,\"isSystem\":true,\"isUIReadOnly\":true,\"isNullable\":false,\"isUnique\":false,\"isLabelSyncedWithName\":false,\"relationTargetFieldMetadataId\":null,\"relationTargetObjectMetadataId\":null,\"morphId\":null,\"createdAt\":\"2026-05-02T17:49:08.851Z\",\"updatedAt\":\"2026-05-02T17:49:08.851Z\"}]"
+    }
+  ],
+  "isError": false
+}

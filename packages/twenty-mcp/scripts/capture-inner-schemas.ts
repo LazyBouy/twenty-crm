@@ -46,6 +46,8 @@ const CATALOG_PATH = join(HERE, '..', 'src', '__tests__', 'fixtures', 'tools-cat
 
 // Inner tool names this proxy wraps (kept in sync with src/tools/*.ts).
 const STATIC_INNER_TOOL_NAMES = [
+  // metadata (read)
+  'get_field_metadata',
   // metadata
   'create_object_metadata',
   'update_object_metadata',
@@ -53,6 +55,8 @@ const STATIC_INNER_TOOL_NAMES = [
   'update_field_metadata',
   'create_many_field_metadata',
   'create_many_relation_fields',
+  // views (read)
+  'get_view_filters',
   // views
   'create_view',
   'update_view',
