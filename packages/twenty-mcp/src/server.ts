@@ -155,6 +155,14 @@ export const createServer = ({
         ),
     );
     server.registerTool(
+      'metadata_compute_plan_hash',
+      metadataToolDefinitions.metadata_compute_plan_hash,
+      (args) =>
+        metadata.metadataComputePlanHash(
+          args as Parameters<typeof metadata.metadataComputePlanHash>[0],
+        ),
+    );
+    server.registerTool(
       'metadata_apply_plan',
       metadataToolDefinitions.metadata_apply_plan,
       async (args) =>

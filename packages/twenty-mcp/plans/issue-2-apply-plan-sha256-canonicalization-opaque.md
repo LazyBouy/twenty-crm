@@ -1,5 +1,9 @@
 # Plan: metadata_apply_plan `expectedSha256` canonicalization is opaque — callers can't reproduce the wrapper's hash
 
+> Audit round 1: low-only — see [issue-2-apply-plan-sha256-canonicalization-opaque-audit-round-1.md](./issue-2-apply-plan-sha256-canonicalization-opaque-audit-round-1.md). 0 critical, 0 high, 0 medium, 3 low (failure-mode-#2 byte-for-byte warning missing from new tool description; pre-existing SDK `tools/list` test gap shared with all metadata tools; benign redundant `TwentyMcpClient` import). Retrospective at [issue-2-apply-plan-sha256-canonicalization-opaque-retrospective.md](./issue-2-apply-plan-sha256-canonicalization-opaque-retrospective.md). State → `awaiting-commit`.
+>
+> Audit follow-up (post-clean-pass): LOW 1 absorbed pre-commit — added the byte-for-byte-identical warning sentence to `metadata_compute_plan_hash`'s description in `metadata.ts:670-676` and re-ran contract test (18/18) + full unit suite (153/153). LOW 2 deferred (pre-existing cross-cutting test gap; not in scope). LOW 3 ignored (cosmetic). The structural gap that allowed LOW 1 to nearly ship un-addressed will be planned separately as a meta-system fix to the audit-fix skill's LOW handling.
+
 > Issue(s): #2
 > Package: packages/twenty-mcp
 > Severity: medium
@@ -171,3 +175,99 @@ Changing the algorithm is a breaking change for any caller that has successfully
 - packages/twenty-mcp/src/tools/metadata.ts:420-437 (SHA256 check in metadataApplyPlan handler)
 - packages/twenty-mcp/src/__tests__/metadata.test.ts:181-209 (existing sha256 tests — extend here)
 - packages/twenty-mcp/src/__tests__/metadata.test.ts:252-278 (sha256OfMutations unit tests)
+
+## Implementation notes
+> Implemented: 2026-05-02T00:00:00Z
+
+### Files changed
+```
+packages/twenty-mcp/src/__tests__/metadata.test.ts
+packages/twenty-mcp/src/server.ts
+packages/twenty-mcp/src/tools/metadata.ts
+```
+
+### Diff stat
+```
+ packages/twenty-mcp/src/__tests__/metadata.test.ts | 51 ++++++++++++++++++++++
+ packages/twenty-mcp/src/server.ts                  |  8 ++++
+ packages/twenty-mcp/src/tools/metadata.ts          | 19 +++++++-
+ 3 files changed, 77 insertions(+), 1 deletion(-) 
+```
+
+### Test results
+
+**1. Unit — `compute_plan_hash` returns same hash as `sha256OfMutations`:**
+Command: `npx jest --testPathPatterns='metadata.test.ts' --testNamePattern='compute_plan_hash' --config jest.config.ts`
+```
+PASS src/__tests__/metadata.test.ts
+  metadata_compute_plan_hash
+    ✓ compute_plan_hash returns the same hash as sha256OfMutations (5 ms)
+    ✓ hash round-trip: compute then apply succeeds without SHA256_CHECK failure (2 ms)
+    ✓ compute_plan_hash is pure: toolsCall and graphqlMutation are NOT called (1 ms)
+Tests: 47 skipped, 3 passed, 50 total
+```
+PASS
+
+**2. Unit — hash round-trip: compute → apply succeeds:**
+Command: `npx jest --testPathPatterns='metadata.test.ts' --testNamePattern='hash round-trip' --config jest.config.ts`
+```
+PASS src/__tests__/metadata.test.ts
+  metadata_compute_plan_hash
+    ✓ hash round-trip: compute then apply succeeds without SHA256_CHECK failure (5 ms)
+Tests: 49 skipped, 1 passed, 50 total
+```
+PASS
+
+**3. Unit — `compute_plan_hash` does not call any inner tool or GraphQL mutation:**
+Command: `npx jest --testPathPatterns='metadata.test.ts' --testNamePattern='compute_plan_hash is pure' --config jest.config.ts`
+```
+PASS src/__tests__/metadata.test.ts
+  metadata_compute_plan_hash
+    ✓ compute_plan_hash is pure: toolsCall and graphqlMutation are NOT called (17 ms)
+Tests: 49 skipped, 1 passed, 50 total
+```
+PASS
+
+**4. Unit — existing SHA256 mismatch / match tests still pass:**
+Command: `npx jest --testPathPatterns='metadata.test.ts' --testNamePattern='expectedSha256' --config jest.config.ts`
+```
+PASS src/__tests__/metadata.test.ts
+  metadata_apply_plan — dispatch + idempotency + hash check
+    ✓ refuses on expectedSha256 mismatch without calling any inner tool (3 ms)
+    ✓ accepts a matching expectedSha256 and proceeds (1 ms)
+Tests: 48 skipped, 2 passed, 50 total
+```
+PASS
+
+**5. Unit — full suite green:**
+Command: `npx jest --config jest.config.ts`
+```
+Test Suites: 12 passed, 12 total
+Tests:       153 passed, 153 total
+Snapshots:   0 total
+Time:        9.99 s
+```
+PASS — 153 tests = 150 baseline + 3 new (matches plan prediction exactly).
+
+**6. Schema / contract test — new tool appears in catalog:**
+Command: `npx jest --testPathPatterns='contract.test.ts' --config jest.config.ts`
+```
+PASS src/__tests__/contract.test.ts
+  contract: wrapper output shape vs Twenty inner-tool schemas
+    [...18 tests...]
+Tests: 18 passed, 18 total
+```
+PASS — Note: the contract test does not contain a specific assertion for `metadata_compute_plan_hash` being present in `metadataToolDefinitions`; it tests wire-level forwarding shapes. The new tool is pure (no inner tool or GraphQL call), so it has no forwarding shape to contract-test. The tool's presence in `metadataToolDefinitions` and its `inputSchema` are verified by the three unit tests in `metadata_compute_plan_hash` describe block in `metadata.test.ts`.
+
+**7. Manual verification:**
+DEFERRED — requires a local Twenty stack with `TWENTY_MCP_ENABLE_METADATA=true`. No local docker-compose instance is available in this environment. Risk: "Untested, deferred — risk: Tested-because-mock-passes (the handler is pure and calls only sha256OfMutations which is already unit-tested independently, so the deferred risk is low)."
+
+### Surprises
+
+1. **`--testPathPattern=` vs `--testPathPatterns=`**: The plan uses the singular form `--testPathPattern=`. Jest 30.1.3 (the version in this package) requires the plural `--testPathPatterns=`. Adapted all 4 targeted test commands accordingly, consistent with how the round-1 implementer handled plan #1.
+
+2. **`server.ts` not listed in plan's `## Proposed fix`**: The plan enumerates only `packages/twenty-mcp/src/tools/metadata.ts` and `packages/twenty-mcp/src/__tests__/metadata.test.ts` as files to touch. However, registering a new tool in `metadataToolDefinitions` without wiring it in `server.ts` would leave it unreachable at runtime. The `server.ts` registration follows the exact same pattern as every other tool in the metadata family and is required for the tool to be discoverable via `TWENTY_MCP_ENABLE_METADATA=true`. This was a gap in the plan's file list, not a scope widening — the server.ts edit is a mechanical consequence of adding the tool definition.
+
+3. **`TwentyMcpClient` was used but not imported in the original `metadata.test.ts`**: The test file used `TwentyMcpClient` in type cast expressions (`as unknown as TwentyMcpClient`) without an explicit import. TypeScript resolved it through the `makeClient` function's inferred return type. Adding an explicit import (`import { TwentyMcpClient } from '../twenty-mcp-client'`) is harmless and makes intent clear.
+
+4. **Test count: 153 = 150 + 3.** Matches the plan prediction exactly. No surprises on count.

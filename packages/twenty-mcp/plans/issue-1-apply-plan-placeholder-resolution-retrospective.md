@@ -3,7 +3,7 @@
 > Issue(s): #1
 > Plan: packages/twenty-mcp/plans/issue-1-apply-plan-placeholder-resolution.md
 > Audit cycles: 2 (round 1 BLOCKED on HIGH 1; round 2 CLEAN)
-> Commit: pending — filled by closer post-commit
+> Commit: 91a42885ef0ecad5a8a4e10cad7beba4e7be6138
 > Written: 2026-05-02T00:00:00Z
 
 ## Forecast vs actual
@@ -56,9 +56,26 @@ The supervisor decides which of L12–L14 to wire in. L12 is the most general an
 ## Diff summary
 
 ```
- packages/twenty-mcp/src/__tests__/metadata.test.ts | 205 +++++++++++++++++++++
- packages/twenty-mcp/src/tools/metadata.ts          | 119 +++++++++++-
- 2 files changed, 320 insertions(+), 4 deletions(-)
+ .claude/agents/issue-auditor.md                    | 212 ++++++++
+ .claude/agents/issue-closer.md                     | 161 ++++++
+ .claude/agents/issue-implementer.md                | 118 +++++
+ .claude/agents/issue-triager.md                    | 192 ++++++++
+ .claude/skills/audit-fix/SKILL.md                  | 116 +++++
+ .claude/skills/close-issue/SKILL.md                |  74 +++
+ .claude/skills/implement-issue-fix/SKILL.md        | 143 ++++++
+ .claude/skills/triage-issues/SKILL.md              | 117 +++++
+ .gitignore                                         |   7 +-
+ packages/twenty-mcp/CLAUDE.md                      |  10 +
+ ...ly-plan-placeholder-resolution-audit-round-1.md | 188 +++++++
+ ...ly-plan-placeholder-resolution-audit-round-2.md |  91 ++++
+ ...ly-plan-placeholder-resolution-retrospective.md |  64 +++
+ .../issue-1-apply-plan-placeholder-resolution.md   | 496 +++++++++++++++++++
+ ...-2-apply-plan-sha256-canonicalization-opaque.md | 173 +++++++
+ ...e-3-apply-plan-operand-field-type-validation.md | 208 ++++++++
+ packages/twenty-mcp/src/__tests__/metadata.test.ts | 205 ++++++++
+ packages/twenty-mcp/src/tools/metadata.ts          | 119 ++++-
+ plans/2026-05-02-audit-pipeline.md                 | 544 +++++++++++++++++++++
+ plans/2026-05-02-issue-triage-agent-system.md      | 412 ++++++++++++++++
+ plans/README.md                                    |  17 +
+ 21 files changed, 3662 insertions(+), 5 deletions(-)
 ```
-
-(`.gitignore` and `packages/twenty-mcp/CLAUDE.md` also appear in `git diff --name-only` but were dirty before this work began — confirmed in the initial git status; not touched in either round of this fix.)

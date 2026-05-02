@@ -210,6 +210,11 @@ const ApplyPlanMutation = z.object({
   args: z.record(z.string(), z.unknown()).describe('Inner-tool / GraphQL arguments for this op.'),
 });
 
+export const metadataComputePlanHashInputSchema = z.object({
+  mutations: z.array(ApplyPlanMutation).min(1).max(50)
+    .describe('The mutations array you intend to pass to metadata_apply_plan. Returns the expectedSha256 value to use.'),
+});
+
 export const metadataApplyPlanInputSchema = z.object({
   mutations: z
     .array(ApplyPlanMutation)
@@ -227,7 +232,7 @@ export const metadataApplyPlanInputSchema = z.object({
     .regex(/^[a-f0-9]{64}$/)
     .optional()
     .describe(
-      'SHA-256 (lowercase hex) of canonical JSON of the mutations array. apply_plan recomputes and refuses if mismatch — defence in depth against in-transit drift.',
+      'SHA-256 (lowercase hex) of the wrapper\'s canonical JSON of the mutations array.\nCanonical form: recursively sort all object keys lexicographically, no whitespace, UTF-8 encoding.\nUse metadata_compute_plan_hash({ mutations }) to obtain the correct hash — this sidesteps spec ambiguity entirely.\nIf computing manually: JSON.stringify with all nested keys sorted; in Node.js: use the canonicalize helper (same as this wrapper). In Python: json.dumps with a recursive sort_keys implementation (stdlib sort_keys=True does NOT recurse into nested objects).',
     ),
 });
 
@@ -416,6 +421,11 @@ export const buildMetadataHandlers = (
       isError: false,
     };
   },
+
+  metadataComputePlanHash: (args: z.infer<typeof metadataComputePlanHashInputSchema>): ToolsCallResult => ({
+    content: [{ type: 'text', text: JSON.stringify({ hash: sha256OfMutations(args.mutations) }) }],
+    isError: false,
+  }),
 
   metadataApplyPlan: async (
     args: z.infer<typeof metadataApplyPlanInputSchema>,
@@ -655,6 +665,13 @@ export const metadataToolDefinitions = {
     description:
       'Returns the apiKeyId and workspaceId of the bearer token currently authenticating the call, derived locally from the JWT (no network round-trip). Used by the access agent to refuse self-modifying mutations (revoke own key, modify own role).',
     inputSchema: metadataGetCallingActorInputSchema.shape,
+    annotations: { readOnlyHint: true, idempotentHint: true },
+  },
+  metadata_compute_plan_hash: {
+    title: 'Compute the SHA-256 hash for a mutations array',
+    description:
+      'Returns the expectedSha256 value for a given mutations array using the same canonical-JSON algorithm as metadata_apply_plan. Call this before apply_plan to obtain the correct hash without manual implementation. Pure — no side effects, no mutations dispatched. The mutations array passed here MUST be byte-for-byte identical (same key order, same values, same types) to the array later passed to metadata_apply_plan; any drift between the two — including LLM re-emission, JSON parse-then-re-encode, or schema-driven reordering — will produce a different hash and trigger an expectedSha256 mismatch.',
+    inputSchema: metadataComputePlanHashInputSchema.shape,
     annotations: { readOnlyHint: true, idempotentHint: true },
   },
   metadata_apply_plan: {

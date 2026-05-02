@@ -710,3 +710,54 @@ describe('metadata_apply_plan — placeholder resolution', () => {
     expect(secondCallArgs.arguments.description).toBe('created via $k1');
   });
 });
+
+describe('metadata_compute_plan_hash', () => {
+  it('compute_plan_hash returns the same hash as sha256OfMutations', () => {
+    const { toolsCall, graphqlMutation, client, apiKey } = makeClient();
+    const handlers = buildMetadataHandlers(client, apiKey);
+
+    const mutations = [{ key: 'k1', op: 'CREATE_FIELD' as const, args: { foo: 1 } }];
+    const result = handlers.metadataComputePlanHash({ mutations });
+
+    const parsed = JSON.parse(
+      (result.content[0] as { type: 'text'; text: string }).text,
+    ) as { hash: string };
+    expect(parsed.hash).toBe(sha256OfMutations(mutations));
+    expect(parsed.hash).toMatch(/^[a-f0-9]{64}$/);
+    // Pure — neither inner tool nor GraphQL was called.
+    expect(toolsCall).not.toHaveBeenCalled();
+    expect(graphqlMutation).not.toHaveBeenCalled();
+  });
+
+  it('hash round-trip: compute then apply succeeds without SHA256_CHECK failure', async () => {
+    const { toolsCall, client, apiKey } = makeClient();
+    const handlers = buildMetadataHandlers(client, apiKey);
+
+    const mutations = [{ key: 'k1', op: 'CREATE_FIELD' as const, args: { foo: 1 } }];
+    const hashResult = handlers.metadataComputePlanHash({ mutations });
+    const { hash } = JSON.parse(
+      (hashResult.content[0] as { type: 'text'; text: string }).text,
+    ) as { hash: string };
+
+    const applyResult = await handlers.metadataApplyPlan({ mutations, expectedSha256: hash });
+
+    expect(applyResult.isError).toBe(false);
+    const parsed = JSON.parse(
+      (applyResult.content[0] as { type: 'text'; text: string }).text,
+    ) as { failed: { op: string } | null };
+    expect(parsed.failed).toBeNull();
+    expect(toolsCall).toHaveBeenCalledTimes(1);
+  });
+
+  it('compute_plan_hash is pure: toolsCall and graphqlMutation are NOT called', () => {
+    const { toolsCall, graphqlMutation, client, apiKey } = makeClient();
+    const handlers = buildMetadataHandlers(client, apiKey);
+
+    handlers.metadataComputePlanHash({
+      mutations: [{ key: 'k1', op: 'CREATE_FIELD' as const, args: { name: 'x', label: 'X' } }],
+    });
+
+    expect(toolsCall).not.toHaveBeenCalled();
+    expect(graphqlMutation).not.toHaveBeenCalled();
+  });
+});
