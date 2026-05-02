@@ -150,6 +150,26 @@ If the issue's `state_reason` is `reopened`:
 2. Read the prior plan AND its retrospective.
 3. Write the new plan with a `## Why the prior fix didn't hold` section as the first content section, before "Problem statement." Cite specifically what the prior plan missed (e.g. "prior plan only covered happy path; reopen surfaces edge case X").
 
+## Sweep-issue handling (low-priority backlog batch)
+
+If the issue's title starts with `[<pkg>] Low-priority audit findings sweep — ` (filed by the `/sweep-lows` skill), treat it as a **SWEEP issue**, not a normal bug:
+
+1. Read the issue body — it lists every `Queued` backlog item from `packages/<pkg>/plans/low-backlog.md` at sweep time, with one row per item (subcategory, source-audit ref, description, suggested resolution).
+2. Read the package's `low-backlog.md` to see which entries are in scope (the sweep issue's body is the source of truth, but the backlog file is the human-editable record).
+3. Write a single plan named `packages/<pkg>/plans/issue-<n>-low-sweep.md` (or similar) with this shape:
+   - `## Problem statement` — one paragraph explaining this is a low-priority sweep batching N items.
+   - `## Items` — one numbered subsection per backlog entry. Each subsection has its own:
+     - mini Problem-statement (1–2 sentences from the backlog row)
+     - Reproduction (when applicable; for cosmetic items just "n/a")
+     - Proposed fix (concrete, from the backlog's "Suggested resolution" column, refined as needed)
+     - Test-plan-item (one runnable command if testable; otherwise "manual visual diff")
+   - `## Failure modes named` — **combined R3 across all items**, not per-item. Typical sweep-failure modes: (1) implementer absorbs items in wrong order causing rework, (2) one cosmetic fix triggers a lint regression that masks a different cosmetic, (3) items rot — sweeps land but related foot-guns regress in adjacent diffs because the fix wasn't structural. Each with a concrete mitigation.
+   - `## Out of scope` — backlog items that the triager judges should NOT be in this sweep (e.g., turned out to be HIGH on closer inspection; or rendered moot by another fix). Each named with rationale per R2.
+   - `## References` — link to the source `low-backlog.md` and to every audit-round file that produced an item.
+4. After writing the plan, **DO NOT delete the backlog entries yet** — the `/sweep-lows` skill already moved them to the `Swept (history)` section before the issue was filed. The triager only writes the plan; the standard pipeline (implementer → auditor → close) handles the rest.
+
+The supervisor's plan-approval review still applies (R1/R3/R4) — sweep plans must have mechanical verifiers per item, just like fix plans.
+
 ## Hard prohibitions
 
 - Never edit any file outside `plans/` and `.claude/state/`.

@@ -53,9 +53,25 @@ Anything else — source files, test files, the plan itself, CLAUDE.md — is **
 - **CRITICAL** — ships → user-visible correctness regression OR security incident. Examples: type error in production code path, broken contract with deployed Twenty (mutation/query name wrong), unhandled error path in a user-facing handler.
 - **HIGH** — ships → high probability of bug surfacing in the next 24h of real use. Examples: missing test coverage on the only new code path, tool description contradicts handler behaviour, regression in adjacent code path that isn't caught by existing tests.
 - **MEDIUM** — ships → real but bounded risk; warrants its own follow-up issue. Examples: performance regression on edge cases, missing input validation that's not exploitable today but is a future hazard, documentation gap on a new public API.
-- **LOW** — ships fine; just worth recording. Examples: minor style drift, suboptimal but correct algorithm, comment clarity.
+- **LOW** — ships fine but should be recorded somewhere actionable. Every LOW MUST be assigned a **subcategory** that determines routing:
 
-If unsure: **escalate** — better to mark high and have the supervisor downgrade than mark medium and let it slip.
+  | Subcategory | Definition | Auditor's `Suggested action` line |
+  |---|---|---|
+  | `trivial-in-place` | A specific, mechanical, in-place fix (description text, comment update, single-line tweak). No behaviour change to existing tests. | `Suggested action: <one-line edit description>; estimated absorb time: <Nmin>.` |
+  | `cross-cutting` | A real defect that's NOT specific to this fix's scope — applies to all wrappers / all metadata tools / repo-wide tooling. | `Suggested action: file as separate issue with title \`<draft>\` and body \`<draft>\`.` |
+  | `foot-gun` | Latent — only matters if some other change happens later (e.g., regex widens, schema evolves). | `Suggested action: backlog (foot-gun): <one-line description>; resolution: <text>.` |
+  | `cosmetic` | Style / redundancy / no functional impact at any scale. | `Suggested action: backlog (cosmetic): <one-line description>; resolution: <text>.` |
+
+  Routing summary (the supervisor's `/audit-fix` skill applies this):
+  - `trivial-in-place` → absorbed pre-commit (one Edit + re-run targeted tests)
+  - `cross-cutting` → filed as new GitHub issue immediately
+  - `foot-gun` / `cosmetic` → appended to `packages/<pkg>/plans/low-backlog.md` Queued table; swept via `/sweep-lows` when threshold crossed
+  - **Nothing is "annotate-and-forget."** Every LOW lands in one of these three persistent destinations.
+
+If unsure: **escalate**.
+- Between CRITICAL/HIGH/MEDIUM/LOW: escalate one tier higher (better to mark high and have the supervisor downgrade than mark medium and let it slip).
+- Between `trivial-in-place` and `cosmetic`: escalate to `trivial-in-place` (cost of absorbing an unnecessary one-liner is ~30 seconds; cost of letting a real LOW slide is one tool-description-bug-#2 incident).
+- Between `cross-cutting` and `foot-gun`: escalate to `cross-cutting` (filing an issue is more visible than the backlog; over-eager issues can be closed as wontfix in triage).
 
 ## Per-round audit report schema (write this verbatim to disk)
 
@@ -91,8 +107,15 @@ If unsure: **escalate** — better to mark high and have the supervisor downgrad
 ### MEDIUM <if any> — file as new GitHub issue
 <same shape; include a draft issue title + body>
 
-### LOW <if any> — annotate to Implementation notes
-<same shape; one-line annotation suggested>
+### LOW <if any> — varied routing per subcategory
+
+1. **<title>** [TRIVIAL-IN-PLACE | CROSS-CUTTING | FOOT-GUN | COSMETIC] (file:line)
+   - What: <description>
+   - Why low: <reason>
+   - Subcategory rationale: <one sentence — why this category, not the next-tier-up>
+   - Suggested action: <concrete; for trivial-in-place this is the edit; for cross-cutting this is the draft issue title+body; for foot-gun/cosmetic this is the backlog one-liner>
+
+The supervisor (`/audit-fix` skill) routes per subcategory: trivial-in-place → absorb pre-commit; cross-cutting → file new issue; foot-gun/cosmetic → backlog Queued table for later sweep via `/sweep-lows`.
 
 ## Adversarial pre-mortem (R3 against the diff)
 

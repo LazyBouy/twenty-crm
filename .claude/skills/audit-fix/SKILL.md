@@ -1,6 +1,6 @@
 ---
 name: audit-fix
-description: Run the post-implementation auditor against a plan whose implementer has already appended ## Implementation notes. Spawns issue-auditor (Opus), reads the resulting audit-round file, severity-routes defects (critical/high block + restart triage; medium → file new GitHub issue; low → annotate plan), confirms the retrospective is on disk on a clean pass. The supervisor's R1 re-run + own-audit pass happens AFTER this skill returns. Refuses without a plan path.
+description: Run the post-implementation auditor against a plan whose implementer has already appended ## Implementation notes. Spawns issue-auditor (Opus), reads the resulting audit-round file, severity-routes defects (critical/high block + restart triage; medium → file new GitHub issue; low → routed by subcategory: trivial-in-place absorbed pre-commit, cross-cutting filed as new issue, foot-gun + cosmetic backlogged for /sweep-lows). Confirms the retrospective is on disk on a clean pass. The supervisor's R1 re-run + own-audit pass happens AFTER this skill returns. Refuses without a plan path.
 ---
 
 # /audit-fix `<plan-path>` — adversarial post-implementation audit gate
@@ -50,8 +50,24 @@ Append a one-line annotation to the plan via `Edit`, depending on what the audit
   - Confirm the retrospective is on disk (step 4).
 
 - **LOW defects only (no critical, high, or medium)** →
-  - Append to plan: `> Audit round <N>: low-only — see <audit-round-file-relative-path>`.
-  - Confirm the retrospective is on disk (step 4).
+  Group LOWs by subcategory (the auditor must have tagged each: `trivial-in-place | cross-cutting | foot-gun | cosmetic`). Route per subcategory — **nothing is annotate-and-forget**:
+
+  - For each `trivial-in-place` LOW:
+    - Apply the auditor's `Suggested action` Edit verbatim.
+    - Re-run the affected test pattern + the contract test as a regression check.
+    - Append to plan: `> Audit round <N>: LOW absorbed pre-commit (trivial-in-place): <short-desc>`.
+  - For each `cross-cutting` LOW:
+    - File a new GitHub issue via REST using the auditor's draft title + body. Body must include a marker line: `Source: audit-fix LOW (cross-cutting). Parent issue: #<n>. Audit report: <audit-round-file-relative-path>.`
+    - **Mass-cross-cutting safeguard**: if a single round produces >3 cross-cutting LOWs, pause and ask the user before filing — this likely indicates baseline drift, not per-fix defects.
+    - Append to plan: `> Audit round <N>: LOW filed as #<n> (cross-cutting): <short-desc>`.
+  - For each `foot-gun` or `cosmetic` LOW:
+    - Append the entry to `packages/<pkg>/plans/low-backlog.md` `## Queued` table. Create the file with the documented schema if it doesn't exist yet.
+    - Append to plan: `> Audit round <N>: LOW backlogged (<subcategory>): <short-desc>`.
+
+  After all LOWs routed, **check the backlog count** for the affected package:
+  - If `Queued` count crossed the threshold (default 5), surface a recommendation in the final ready-for-commit report: `Backlog at <n> items in <pkg>; recommend running /sweep-lows to file a batched issue.` (Do NOT auto-fire `/sweep-lows` — that's a user-gated action.)
+
+  Confirm the retrospective is on disk (step 4).
 
 - **No defects at all** →
   - Append to plan: `> Audit round <N>: clean — see <audit-round-file-relative-path>`.

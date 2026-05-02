@@ -3,7 +3,7 @@
 > Issue(s): #2
 > Plan: packages/twenty-mcp/plans/issue-2-apply-plan-sha256-canonicalization-opaque.md
 > Audit cycles: 1
-> Commit: pending — filled by closer post-commit
+> Commit: 8906f921054662e62694a4c0efa297c4c6b479b4
 > Written: 2026-05-02T00:00:00Z
 
 ## Forecast vs actual
@@ -59,8 +59,12 @@ Consolidated from implementer's `## Implementation notes → Surprises` and audi
 
 ## Diff summary
 ```
- packages/twenty-mcp/src/__tests__/metadata.test.ts | 51 ++++++++++++++++++++++
- packages/twenty-mcp/src/server.ts                  |  8 ++++
- packages/twenty-mcp/src/tools/metadata.ts          | 19 +++++++-
- 3 files changed, 77 insertions(+), 1 deletion(-)
+ ...ly-plan-placeholder-resolution-retrospective.md |  29 ++++--
+ ...sha256-canonicalization-opaque-audit-round-1.md |  86 ++++++++++++++++++
+ ...sha256-canonicalization-opaque-retrospective.md |  66 ++++++++++++++
+ ...-2-apply-plan-sha256-canonicalization-opaque.md | 100 +++++++++++++++++++++
+ packages/twenty-mcp/src/__tests__/metadata.test.ts |  51 +++++++++++
+ packages/twenty-mcp/src/server.ts                  |   8 ++
+ packages/twenty-mcp/src/tools/metadata.ts          |  19 +++-
+ 7 files changed, 352 insertions(+), 7 deletions(-)
 ```

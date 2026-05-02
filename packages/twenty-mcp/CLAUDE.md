@@ -97,7 +97,8 @@ When you catch yourself reaching for one of these, stop. Verify the claim or dow
 - [ ] If a NEW tool was added: per-tool integration smoke added to `__tests__/integration/round-trip.test.ts` AND it passed live against a **local docker-compose Twenty** (NOT VPS)
 - [ ] If a NEW tool is gated behind a feature flag: the flag was lifted and the tool exercised live before this PR was opened (R-rule violation otherwise — see L11)
 - [ ] If the tool uses GraphQL transport: endpoint partition explicit (`/metadata` for admin, `/graphql` for workspace data) and passed to `client.graphqlMutation(...)`
-- [ ] `/audit-fix <plan-path>` ran and reported no critical/high defects (medium → filed as follow-up; low → annotated). Retrospective is on disk before commit.
+- [ ] `/audit-fix <plan-path>` ran and reported no critical/high defects (medium → filed as follow-up; low → routed per subcategory). Retrospective is on disk before commit.
+- [ ] LOWs from the audit were sub-categorized AND routed per the policy: `trivial-in-place` absorbed pre-commit; `cross-cutting` filed as new GitHub issue; `foot-gun` and `cosmetic` appended to `packages/<pkg>/plans/low-backlog.md` Queued table. **Nothing is "annotate-and-forget."** See `.claude/skills/audit-fix/SKILL.md` for the routing rule and `.claude/skills/sweep-lows/SKILL.md` for the threshold-driven sweep that batches backlog items into a fix issue.
 
 **Evaluation gates** (rules from the section above; passing the mechanical gates does not satisfy these):
 - [ ] R1 satisfied: every claim of "done" has been backed by an exercised run, not just an implementation
@@ -172,3 +173,4 @@ See [plans/](./plans/) — every shipped fix has a plan + retrospective. **READ 
 - Don't forward agent-facing keys (`object`, `data`, `filter`) to Twenty's flat-shape inner tools.
 - The GraphQL schema is auto-generated per workspace; some types only exist after specific objects are present.
 - `discovery({focus: "<name>"})` is the authoritative schema source at runtime; do not bake assumed shapes into descriptions.
+- **When adding a new wrapper tool (handler + schema + catalog entry), the plan's "Files to modify" list MUST include `src/server.ts`.** Without `server.registerTool(...)` in `server.ts`, the tool is defined in `metadataToolDefinitions` (or the package's equivalent map) but is **unreachable at the MCP runtime boundary** — `tools/list` won't surface it; `discovery({focus: …})` won't find it. Two consecutive plans hit this surprise (#2 directly, #1 indirectly via lessons). The plan-time fix is mechanical (one register-call paragraph in the plan); the audit-time check is mechanical too (the contract test catches a missing entry). Codified to prevent #3 and beyond.
