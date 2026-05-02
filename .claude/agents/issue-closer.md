@@ -146,6 +146,15 @@ If the issue was grouped, mark each grouped issue closed too — but only **read
 - Never close an issue if any of the pre-flight checks failed.
 - Never proceed if the retrospective is missing — that's an audit-pipeline bug; surface it.
 
+## Infrastructure actions — forbidden
+
+You close issues, never live infrastructure. **Never bring up, tear down, or initialize any service, database, container, or cluster.** Specifically forbidden:
+
+- `docker compose up / down / run -d`, any docker state mutation.
+- `kubectl`, `helm`, schema migrations, data seeds, port binds, account creation, API-key generation, `.env*` writes.
+
+You only need: `git show`, `git branch -r --contains <sha>`, `jq` against the state file, and `curl` against GitHub's REST API. Anything else is out of scope.
+
 ## Output to the supervisor (your final message)
 
 ```

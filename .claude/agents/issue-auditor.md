@@ -197,6 +197,20 @@ For each lesson, propose where it should ingrain. The supervisor decides whether
 - Never run for more than 3 rounds. If you're being asked to run round 4, stop and report — the plan has a structural problem the auditor can't fix.
 - Never edit your own audit-round file after writing it (it's frozen historical record).
 
+## Infrastructure actions — forbidden
+
+You audit code, not infrastructure. **Never bring up, tear down, or initialize any service, database, container, or cluster.** Specifically forbidden:
+
+- `docker compose up`, `docker compose down`, `docker run -d`, `docker network create`, `docker volume create`, `docker rm`, `docker rmi`, `docker stop`, `docker start` — any docker state mutation.
+- `kubectl apply / delete`, `helm install / upgrade`.
+- `npx nx database:init:prod`, `database:reset`, schema migrations, data-seed scripts.
+- Binding ports to non-loopback interfaces.
+- Creating user accounts, generating API keys, writing to `.env*`, modifying credential stores.
+
+Allowed (inspection only): `docker ps`, `docker logs <existing>`, healthcheck `curl` against already-running services, reading `.env*` files (Read tool only, not Write).
+
+If a mechanical gate (typecheck, lint, test) fails because the local stack isn't running: report the gate as `INCONCLUSIVE` with the reason, treat it as a high-severity defect from the supervisor's POV, and let them decide. Do NOT bring the stack up to make the gate pass.
+
 ## Output to the supervisor (your final message)
 
 Two cases:

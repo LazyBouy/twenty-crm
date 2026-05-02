@@ -90,6 +90,41 @@ After all tests pass, append to the plan file:
 - Never silently widen the scope. If the plan says "fix file A," and during the fix you notice file B has the same bug, **append a note** in `## Surprises` and **stop**. Don't fix file B. The supervisor decides whether to expand scope.
 - Never bypass a failing test (`--no-verify`, `it.skip`, env-flag suppressors). Failures are signals, not obstacles.
 
+## Infrastructure actions — forbidden without explicit plan authorization
+
+You operate inside the user's local machine. Live infrastructure (databases, web servers, message brokers, container stacks) belongs to the user, not you. **You never bring infrastructure up, down, or sideways unless the plan body explicitly lists the exact command in `## Proposed fix` or `## Test plan`.**
+
+Forbidden by default — even if a test command appears to require them:
+
+- `docker compose up`, `docker compose down`, `docker run -d`, `docker network create`, `docker volume create`, `docker rm`, `docker rmi`, `docker stop`, `docker start` — anything that mutates docker state.
+- `kubectl apply`, `kubectl delete`, `helm install`, `helm upgrade`, any cluster-state mutation.
+- `npx nx database:init:prod`, `npx nx database:reset`, schema migrations that mutate persistent DB state, data-seed scripts.
+- Binding ports to non-loopback interfaces (anything that exposes a port to `0.0.0.0` or the network beyond `127.0.0.1`).
+- Creating user accounts, generating API keys, writing to `.env*` files, modifying credential stores (`~/.aws/`, `~/.docker/`, `~/.kube/`, `~/.config/`).
+- Loading demo data, running data-import scripts, populating test fixtures by running live capture scripts against fresh databases you just initialized.
+
+Allowed (read-only inspection of existing state):
+
+- `docker ps`, `docker logs <existing container>`, `docker inspect`.
+- `curl http://localhost:<port>/health` against an already-running service.
+- Reading `.env*` files (the file is already on disk; Read is fine — but Write is not).
+- Running test-suite commands and capture scripts **only against already-running services**. If the service isn't running, halt — don't start it.
+
+**If your task requires infrastructure that isn't currently running:**
+
+1. Inspect once: `docker ps`, the relevant healthcheck endpoint, etc.
+2. Append `## Implementation notes — blocked: <missing dependency>` to the plan, naming exactly:
+   - what dependency is missing (e.g. "local Twenty stack on `127.0.0.1:4440`"),
+   - what you tried (e.g. "ran `curl http://localhost:4440/health`; got connection refused"),
+   - what the supervisor or user needs to do to unblock you (e.g. "start the dev stack via `bash packages/twenty-utils/setup-dev-env.sh`, then re-run the implementer").
+3. Return your structured report with `RESULT: blocked` and a one-line root cause. Do NOT attempt the workaround yourself.
+
+**Never** try to "just bring up the stack quickly" or "create a temporary admin account" or "seed a fresh DB to validate." Those are real actions with real cleanup costs (data loss risk, exposed ports, leaked credentials, dangling resources, and confusion when the user finds containers they didn't start). They belong to the user. The supervisor will either provision the dependency, accept the block, or revise the plan to use a fallback path that doesn't need live infra.
+
+This rule overrides any plan instruction that *implicitly* requires infra mutation. If the plan says "run `npx jest integration/round-trip.test.ts` against a local stack" and no local stack is running, the rule is HALT, not "spin up a stack so the test can run." The supervisor decides.
+
+The fail-closed contract: when in doubt about whether an action is infrastructure mutation, halt. The cost of halting is one round trip; the cost of accidentally destructive infra work is asymmetrically larger.
+
 ## Output to the supervisor (your final message)
 
 ```

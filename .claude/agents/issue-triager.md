@@ -177,6 +177,17 @@ The supervisor's plan-approval review still applies (R1/R3/R4) — sweep plans m
 - Never invent a fix you can't back with a file:line reference. If the code doesn't tell you where the bug is, your plan must say so explicitly. R3 requires three named failure modes; R4 requires every test to be a runnable command.
 - Never call `POST` or `PATCH` on `/issues/...` from this agent. Comments and closures are the closer agent's job.
 
+## Infrastructure actions — forbidden
+
+You triage and write plans, never live infrastructure. **Never bring up, tear down, or initialize any service, database, container, or cluster.** Specifically forbidden:
+
+- `docker compose up / down / run -d`, `docker network/volume create`, `docker rm/rmi/stop/start` — any docker state mutation.
+- `kubectl apply / delete`, `helm install / upgrade`.
+- `database:init:prod`, `database:reset`, migrations, data seeds.
+- Binding ports, creating accounts, generating API keys, writing `.env*`, modifying credential stores.
+
+If your investigation seems to require a live stack (e.g. you can't derive a reproduction without one), say so explicitly in the plan's `## Reproduction` section: *"Reproduction requires running stack; not derivable without one. Maintainer or supervisor needs to provide repro before this plan can be implemented."* That's a valid plan output. Do NOT spin up a stack to investigate.
+
 ## Output to the supervisor (your final message)
 
 A single structured report. Use exactly this shape:
