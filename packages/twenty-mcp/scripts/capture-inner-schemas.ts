@@ -42,6 +42,7 @@ type Fixture = {
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const FIXTURE_PATH = join(HERE, '..', 'src', '__tests__', 'fixtures', 'inner-tool-schemas.json');
+const CATALOG_PATH = join(HERE, '..', 'src', '__tests__', 'fixtures', 'tools-catalog.json');
 
 // Inner tool names this proxy wraps (kept in sync with src/tools/*.ts).
 const STATIC_INNER_TOOL_NAMES = [
@@ -169,6 +170,40 @@ const main = async () => {
 
   writeFileSync(args.outPath, JSON.stringify(merged, null, 2) + '\n');
   process.stderr.write(`[capture] wrote ${args.outPath}\n`);
+
+  // Also capture the full tools/list catalog so coverage.test.ts can verify
+  // every literal toolName in the wrappers exists on the deployed Twenty.
+  process.stderr.write(`[capture] requesting get_tool_catalog for full inventory…\n`);
+  const catalogResult = await client.toolsCall('get_tool_catalog', {});
+  const catalogBlock = catalogResult.content.find(
+    (c) => c.type === 'text' && typeof c.text === 'string',
+  );
+  if (!catalogBlock?.text) {
+    process.stderr.write(`[capture] WARNING: no catalog text block returned\n`);
+  } else {
+    const parsed = JSON.parse(catalogBlock.text) as { catalog?: Record<string, unknown> };
+    const catalog = parsed.catalog ?? parsed;
+    const allNames: string[] = [];
+    if (catalog && typeof catalog === 'object') {
+      for (const items of Object.values(catalog as Record<string, unknown>)) {
+        if (Array.isArray(items)) {
+          for (const item of items) {
+            if (item && typeof item === 'object' && 'name' in item) {
+              allNames.push(String((item as { name: string }).name));
+            }
+          }
+        }
+      }
+    }
+    const catalogOut = {
+      $source: `Captured from ${baseUrl} on ${new Date().toISOString()}`,
+      $count: allNames.length,
+      tools: allNames.sort(),
+      catalogByCategory: catalog,
+    };
+    writeFileSync(CATALOG_PATH, JSON.stringify(catalogOut, null, 2) + '\n');
+    process.stderr.write(`[capture] wrote ${CATALOG_PATH} (${allNames.length} tools)\n`);
+  }
 };
 
 main().catch((err) => {

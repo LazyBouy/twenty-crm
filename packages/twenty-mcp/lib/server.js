@@ -36,7 +36,7 @@ const createServer = ({ twentyBaseUrl, twentyApiKey, fetchImpl, enableMetadata =
     server.registerTool('update_record', crm_1.crmToolDefinitions.update_record, async (args) => crm.updateRecord(args));
     server.registerTool('delete_record', crm_1.crmToolDefinitions.delete_record, async (args) => crm.deleteRecord(args));
     // Note-target linking — bypasses Twenty's record-crud workflow gate via
-    // GraphQL `createOneNoteTarget` because noteTarget is an isSystem object
+    // GraphQL `createNoteTarget` because noteTarget is an isSystem object
     // that the standard execute_tool path refuses to create. Always registered
     // (not gated behind enableMetadata) since it's a baseline CRM linkage op.
     const noteTargets = (0, note_targets_1.buildNoteTargetHandlers)(client);

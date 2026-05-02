@@ -46,13 +46,13 @@ describe('linkNoteToRecordInputSchema', () => {
 });
 
 describe('buildCreateNoteTargetMutation', () => {
-  it('emits a createOneNoteTarget GraphQL mutation with the correct variables shape', () => {
+  it('emits a createNoteTarget GraphQL mutation with the correct variables shape', () => {
     const { query, variables } = buildCreateNoteTargetMutation({
       noteId: VALID_NOTE,
       targetCompanyId: VALID_COMPANY,
     });
 
-    expect(query).toContain('createOneNoteTarget(data: $data)');
+    expect(query).toContain('createNoteTarget(data: $data)');
     expect(query).toContain('NoteTargetCreateInput!');
     // Result projection must surface the ids the agent can use to confirm the link.
     expect(query).toContain('id');
@@ -86,7 +86,7 @@ describe('linkNoteToRecord handler', () => {
     const toolsCall = jest.fn();
     const graphqlMutation = jest
       .fn()
-      .mockResolvedValue({ createOneNoteTarget: { id: 'nt-1', noteId: VALID_NOTE, targetCompanyId: VALID_COMPANY } });
+      .mockResolvedValue({ createNoteTarget: { id: 'nt-1', noteId: VALID_NOTE, targetCompanyId: VALID_COMPANY } });
     const client = { toolsCall, graphqlMutation } as unknown as TwentyMcpClient;
     const handlers = buildNoteTargetHandlers(client);
 
@@ -99,9 +99,12 @@ describe('linkNoteToRecord handler', () => {
     // because Twenty's workflow gate blocks system-object creates there.
     expect(toolsCall).not.toHaveBeenCalled();
     expect(graphqlMutation).toHaveBeenCalledTimes(1);
-    const [query, variables] = graphqlMutation.mock.calls[0];
-    expect(query).toContain('createOneNoteTarget');
+    const [query, variables, endpoint] = graphqlMutation.mock.calls[0];
+    expect(query).toContain('createNoteTarget');
     expect((variables as { data: { noteId: string } }).data.noteId).toBe(VALID_NOTE);
+    // Bug #4 regression guard: createNoteTarget lives on /graphql, not /metadata.
+    // The handler must explicitly target the data endpoint.
+    expect(endpoint).toBe('graphql');
 
     // Result envelope shape — agents parse this.
     expect(result.isError).toBe(false);
@@ -109,6 +112,6 @@ describe('linkNoteToRecord handler', () => {
     if (block.type !== 'text') throw new Error('expected text block');
     const parsed = JSON.parse(block.text);
     expect(parsed.success).toBe(true);
-    expect(parsed.result.createOneNoteTarget.id).toBe('nt-1');
+    expect(parsed.result.createNoteTarget.id).toBe('nt-1');
   });
 });

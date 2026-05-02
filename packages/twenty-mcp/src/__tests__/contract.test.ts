@@ -342,7 +342,7 @@ describe('contract: wrapper output shape vs Twenty inner-tool schemas', () => {
   });
 
   describe('note-targets.ts (GraphQL transport — bypasses workflow gate)', () => {
-    it('linkNoteToRecord emits createOneNoteTarget mutation with valid variables shape', async () => {
+    it('linkNoteToRecord emits createNoteTarget mutation with valid variables shape', async () => {
       const cap = makeCapturingClient();
       const handlers = buildNoteTargetHandlers(cap.client);
       await handlers.linkNoteToRecord({
@@ -350,8 +350,8 @@ describe('contract: wrapper output shape vs Twenty inner-tool schemas', () => {
         targetCompanyId: '00000000-0000-0000-0000-000000000002',
       });
       const { query, variables } = cap.lastGraphql();
-      expect(query).toContain('createOneNoteTarget');
-      assertContract('createOneNoteTarget', variables);
+      expect(query).toContain('createNoteTarget');
+      assertContract('createNoteTarget', variables);
     });
 
     it('routes via graphqlMutation, never via execute_tool (the whole point)', async () => {

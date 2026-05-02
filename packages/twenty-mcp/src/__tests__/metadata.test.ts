@@ -380,8 +380,10 @@ describe('metadata_query — Phase 4 graphql kinds', () => {
       expect(graphqlMutation).toHaveBeenCalledTimes(1);
       const [query] = graphqlMutation.mock.calls[0]!;
       // Query should mention the right top-level field
+      // roles uses GraphQL `getRoles` query name (verified via /metadata
+      // introspection — bug #5 fix). api_keys / webhooks use bare names.
       const expectedField =
-        kind === 'roles' ? 'roles' : kind === 'api_keys' ? 'apiKeys' : 'webhooks';
+        kind === 'roles' ? 'getRoles' : kind === 'api_keys' ? 'apiKeys' : 'webhooks';
       expect(query).toContain(expectedField);
     },
   );

@@ -156,9 +156,13 @@ const buildUpdateRole = (
 const buildUpsertObjectPermissions = (
   args: z.infer<typeof accessUpsertObjectPermissionsInputSchema>,
 ): { query: string; variables: Record<string, unknown> } => ({
+  // ObjectPermission type on this Twenty version has no `id` or `roleId` —
+  // identity is composite (roleId comes from the input, objectMetadataId is
+  // on the row). Verified via /metadata introspection: bug #6 from
+  // plans/audit-and-safeguards.md.
   query: `mutation($input: UpsertObjectPermissionsInput!) {
     upsertObjectPermissions(upsertObjectPermissionsInput: $input) {
-      id roleId objectMetadataId
+      objectMetadataId
       canReadObjectRecords canUpdateObjectRecords
       canSoftDeleteObjectRecords canDestroyObjectRecords
     }

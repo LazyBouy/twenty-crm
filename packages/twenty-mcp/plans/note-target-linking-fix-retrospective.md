@@ -28,13 +28,13 @@ So: every record-crud create from any caller, of any system object, is blocked. 
 
 ## The breakthrough nobody could have predicted from the error message
 
-**The GraphQL `createOne<Object>` resolver doesn't go through `CreateRecordService` at all.** It calls `CommonCreateOneQueryRunnerService.execute` directly ([`create-one-resolver.factory.ts`](../../twenty-server/src/engine/api/graphql/workspace-resolver-builder/factories/create-one-resolver.factory.ts)), and that runner has zero workflow/system gates. So `mutation { createOneNoteTarget(data: {…}) }` works fine for the same agentic-grounds-1 API key that was being rejected by the record-crud route.
+**The GraphQL `createOne<Object>` resolver doesn't go through `CreateRecordService` at all.** It calls `CommonCreateOneQueryRunnerService.execute` directly ([`create-one-resolver.factory.ts`](../../twenty-server/src/engine/api/graphql/workspace-resolver-builder/factories/create-one-resolver.factory.ts)), and that runner has zero workflow/system gates. So `mutation { createNoteTarget(data: {…}) }` works fine for the same agentic-grounds-1 API key that was being rejected by the record-crud route.
 
 This means the workspace had two parallel write paths the whole time, with different gating rules, and we'd been routing through the gated one without realising the ungated one existed.
 
 ## The fix
 
-Add a typed wrapper `link_note_to_record` in [packages/twenty-mcp/src/tools/note-targets.ts](../src/tools/note-targets.ts) that builds a `createOneNoteTarget(data: {…})` GraphQL mutation and forwards it via `client.graphqlMutation`. Same pattern already used by [access.ts](../src/tools/access.ts) for resolvers Twenty doesn't expose as inner tools.
+Add a typed wrapper `link_note_to_record` in [packages/twenty-mcp/src/tools/note-targets.ts](../src/tools/note-targets.ts) that builds a `createNoteTarget(data: {…})` GraphQL mutation and forwards it via `client.graphqlMutation`. Same pattern already used by [access.ts](../src/tools/access.ts) for resolvers Twenty doesn't expose as inner tools.
 
 - No upstream patch.
 - No fork of the `twentycrm/twenty:latest` image.
@@ -67,8 +67,8 @@ The "embed companyId in note body" workaround works mechanically but trains agen
 
 - **New tool `link_note_to_record`** ([`src/tools/note-targets.ts`](../src/tools/note-targets.ts)) — typed wrapper around the GraphQL bypass.
 - **Unit tests** ([`src/__tests__/note-targets.test.ts`](../src/__tests__/note-targets.test.ts)) — schema validation, mutation shape, and **the routing invariant** (handler must NOT use the `toolsCall` path).
-- **Contract test case** added to [`src/__tests__/contract.test.ts`](../src/__tests__/contract.test.ts) — verifies the GraphQL variables payload conforms to the fixture schema (`createOneNoteTarget`) and that `lastInner()` is never called.
-- **Fixture entry** for `createOneNoteTarget` added to [`inner-tool-schemas.json`](../src/__tests__/fixtures/inner-tool-schemas.json) — captures the data shape (`data.{noteId, targetCompanyId, targetPersonId, targetOpportunityId}`) for ajv validation.
+- **Contract test case** added to [`src/__tests__/contract.test.ts`](../src/__tests__/contract.test.ts) — verifies the GraphQL variables payload conforms to the fixture schema (`createNoteTarget`) and that `lastInner()` is never called.
+- **Fixture entry** for `createNoteTarget` added to [`inner-tool-schemas.json`](../src/__tests__/fixtures/inner-tool-schemas.json) — captures the data shape (`data.{noteId, targetCompanyId, targetPersonId, targetOpportunityId}`) for ajv validation.
 - **Integration round-trip** extended in [`src/__tests__/integration/round-trip.test.ts`](../src/__tests__/integration/round-trip.test.ts) — gated by `TWENTY_MCP_INTEGRATION=1`, runs create company → create note → link → verify.
 - **Tool registered always** (not gated behind `enableMetadata`) since note-linking is baseline functionality.
 
@@ -91,3 +91,46 @@ The "embed companyId in note body" workaround works mechanically but trains agen
 2. **Wrappers see one transport; the wrapped system has many.** Know which transport you're on and what gates each transport carries.
 3. **Hardcoded fallbacks are silent context loss.** If you must default, default to neutral, not to a specific value.
 4. **Test routing decisions with absence assertions.** "This handler MUST NOT call X" is a real test, and it's what catches wrong-path bugs.
+
+---
+
+## Addendum (next day): the GraphQL mutation name was also hand-authored, and also wrong
+
+After this fix shipped, the user reported that `createOneNoteTarget` doesn't exist in their Twenty version's GraphQL schema — the actual mutation is `createNoteTarget` (no `One` prefix). One-line fix applied. This is the **same class of bug as the one this retrospective was written about**, surfacing again less than 24 hours later.
+
+### How
+
+The original fix's reasoning chain:
+1. Read [access.ts](../src/tools/access.ts) — uses `createOneRole`, `updateOneRole`. ✓
+2. Read [`create-one-resolver.factory.ts`](../../twenty-server/src/engine/api/graphql/workspace-resolver-builder/factories/create-one-resolver.factory.ts) — the resolver factory is `CreateOneResolverFactory`, registered under method-key `'createOne'`. ✓
+3. **Inferred** (didn't verify): every object exposes a `createOne<Object>` mutation.
+4. Wrote `createOneNoteTarget` directly into the GraphQL builder.
+
+### Why the existing safeguards didn't catch it
+
+- The **contract test** validates the variables *shape* (`{data: {noteId, targetCompanyId, …}}`) against the fixture, but the fixture key was `createOneNoteTarget` because *I* put it there. The mutation name was self-consistent with itself, not with Twenty's actual schema.
+- The **integration test** would have caught it on first run, but it's gated behind `TWENTY_MCP_INTEGRATION=1` and was never executed against the live VPS.
+
+### The deeper failure
+
+This is **L1 in the retrospective above** ("schemas should be captured from the source of truth, not transcribed by hand"), violated within hours of being written. Copying a pattern from a peer wrapper file (`access.ts`) is still transcription — `access.ts` was *also* hand-authored, so reading it as "source of truth" just propagated the same uncertainty.
+
+### Latent risk in `access.ts`
+
+`access.ts` uses `createOneRole` (line 126) and `updateOneRole` (line 145). If the deployed Twenty drops the `One` prefix universally (as it does for `noteTarget`), then `access_create_role` and `access_update_role` are also broken. They're gated behind `enableMetadata=true`, so they may not have surfaced yet. **Verify against the deployed schema before exercising the access pod.**
+
+### Lesson L8: GraphQL introspection IS the schema. Use it.
+
+Twenty's `/graphql` and `/metadata` endpoints both implement standard GraphQL introspection (`__schema { mutationType { fields { name args { name type { name } } } } }`). That's the source of truth — not the resolver-factory's internal method-key, not a peer wrapper file's hand-authored string. The capture script should:
+
+1. Run a single introspection query against the deployed Twenty.
+2. Extract every mutation name + args our wrappers reference.
+3. Write them to `inner-tool-schemas.json` (or a sibling fixture) so the contract test can assert "the mutation name our wrapper sends EXISTS in the deployed schema with these arg types."
+
+### Process change to add
+
+Extend [`scripts/capture-inner-schemas.ts`](../scripts/capture-inner-schemas.ts) (or add a sibling `capture-graphql-mutations.ts`) to introspect the GraphQL schema at the same time it captures inner-tool schemas. Add a contract assertion that EVERY GraphQL mutation name in `note-targets.ts` and `access.ts` resolves against the captured introspection. This closes the loop the integration test was supposed to provide but didn't (because gated).
+
+### TL;DR addition
+
+5. **GraphQL mutation names ARE schema. Introspect them, don't infer them.** A `createOneFoo` resolver factory in twenty-server doesn't guarantee a `createOneFoo` mutation in the deployed GraphQL schema. The naming pipeline has multiple layers; the only authoritative answer is the introspection query response.

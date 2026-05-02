@@ -4,7 +4,7 @@ exports.noteTargetToolDefinitions = exports.buildNoteTargetHandlers = exports.bu
 const zod_1 = require("zod");
 /**
  * Note-target linking — attach an existing Note to a CRM record (Company / Person /
- * Opportunity). Routes through Twenty's GraphQL `createOneNoteTarget` mutation
+ * Opportunity). Routes through Twenty's GraphQL `createNoteTarget` mutation
  * because the standard `execute_tool → create_note_target` path is blocked by
  * Twenty's workflow gate (CreateRecordService rejects every isSystem object
  * regardless of caller; noteTarget is isSystem). GraphQL bypasses that gate.
@@ -30,8 +30,12 @@ exports.linkNoteToRecordInputSchema = zod_1.z
     message: 'Exactly one of targetCompanyId / targetPersonId / targetOpportunityId is required. To link to multiple records, call this tool once per record.',
 });
 const buildCreateNoteTargetMutation = (args) => ({
+    // Mutation name verified against this Twenty version's GraphQL introspection:
+    // `createNoteTarget` (no `One` prefix). Other objects in the same workspace
+    // also drop the `One` prefix; do NOT assume the createOne<X> pattern from the
+    // resolver factory's internal method-key.
     query: `mutation($data: NoteTargetCreateInput!) {
-    createOneNoteTarget(data: $data) {
+    createNoteTarget(data: $data) {
       id
       noteId
       targetCompanyId
@@ -56,7 +60,11 @@ const wrapGraphqlResult = (data) => ({
 const buildNoteTargetHandlers = (client) => ({
     linkNoteToRecord: async (args) => {
         const { query, variables } = (0, exports.buildCreateNoteTargetMutation)(args);
-        const data = await client.graphqlMutation(query, variables);
+        // Route to /graphql, NOT /metadata. createNoteTarget is a workspace-data
+        // mutation (per-object CRUD); /metadata only exposes admin mutations.
+        // This was bug #4 — the original implementation defaulted to /metadata
+        // and died with "Unknown type NoteTargetCreateInput".
+        const data = await client.graphqlMutation(query, variables, 'graphql');
         return wrapGraphqlResult(data);
     },
 });
@@ -65,7 +73,7 @@ exports.noteTargetToolDefinitions = {
     link_note_to_record: {
         title: 'Link a note to a CRM record (company / person / opportunity)',
         description: 'Attaches an existing Note to a record so it appears under the record\'s "Notes" tab. ' +
-            'Routes through the GraphQL `createOneNoteTarget` mutation, NOT through `execute_tool` — ' +
+            'Routes through the GraphQL `createNoteTarget` mutation, NOT through `execute_tool` — ' +
             "Twenty's record-crud path blocks system-object creation with `Object cannot be created by workflow`. " +
             'Pass `noteId` plus exactly one of `targetCompanyId` / `targetPersonId` / `targetOpportunityId`. ' +
             'For multiple targets, call this tool once per target.',

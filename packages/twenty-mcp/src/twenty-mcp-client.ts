@@ -34,13 +34,16 @@ export type TwentyMcpClientOptions = {
 };
 
 /**
- * HTTP client for Twenty's POST /mcp JSON-RPC endpoint AND POST /metadata GraphQL.
- * The /mcp endpoint is the primary path (used by the discovery + CRM + most metadata
- * tools). The /metadata GraphQL endpoint is used only for access ops (roles,
- * permissions, members, API keys, webhooks) which Twenty exposes as GraphQL
- * resolvers without inner-tool wrappers — see access.ts.
+ * HTTP client for Twenty's THREE endpoints:
+ *  - POST /mcp        → JSON-RPC inner tools (discovery + CRM + execute_tool path; gated by canObjectBeManagedByWorkflow)
+ *  - POST /metadata   → GraphQL for admin metadata (roles, permissions, api keys, object/field metadata) — `createOne<X>` convention
+ *  - POST /graphql    → GraphQL for workspace data (per-object CRUD; system-object bypass for noteTarget/timelineActivity) — `create<X>` convention, NO `One` prefix
  *
- * Both endpoints share the same workspace API key bearer auth.
+ * /metadata and /graphql have DISJOINT mutation sets — picking the wrong one is bug #4
+ * from plans/audit-and-safeguards.md. Callers of graphqlMutation MUST specify which
+ * endpoint they target.
+ *
+ * All endpoints share the same workspace API key bearer auth.
  * Mirrors the Bearer-auth pattern used by packages/twenty-zapier/src/utils/requestDb.ts.
  */
 
@@ -50,18 +53,60 @@ export type GraphqlError = {
   path?: ReadonlyArray<string | number>;
 };
 
+export type GraphqlEndpoint = 'metadata' | 'graphql';
+
 export class TwentyMcpClient {
   private readonly mcpEndpoint: string;
-  private readonly graphqlEndpoint: string;
+  private readonly metadataEndpoint: string;
+  private readonly dataEndpoint: string;
   private readonly apiKey: string;
   private readonly fetchImpl: FetchLike;
 
   constructor({ baseUrl, apiKey, fetchImpl }: TwentyMcpClientOptions) {
     const trimmed = baseUrl.replace(/\/+$/, '');
     this.mcpEndpoint = `${trimmed}/mcp`;
-    this.graphqlEndpoint = `${trimmed}/metadata`;
+    this.metadataEndpoint = `${trimmed}/metadata`;
+    this.dataEndpoint = `${trimmed}/graphql`;
     this.apiKey = apiKey;
     this.fetchImpl = fetchImpl ?? fetch;
+  }
+
+  private graphqlEndpointFor(endpoint: GraphqlEndpoint): string {
+    return endpoint === 'metadata' ? this.metadataEndpoint : this.dataEndpoint;
+  }
+
+  /**
+   * Parse a JSON-RPC response from either:
+   *   - a `Content-Type: application/json` body (non-streaming), OR
+   *   - a `Content-Type: text/event-stream` body (Streamable HTTP transport)
+   * The deployed Caddy-fronted proxy returns SSE; the local docker-compose
+   * proxy can return either depending on Accept negotiation. We accept both.
+   */
+  private async parseJsonRpcResponse(response: Response): Promise<JsonRpcResponse<ToolsCallResult>> {
+    const ct = response.headers.get('content-type') ?? '';
+    if (ct.includes('text/event-stream')) {
+      const raw = await response.text();
+      // SSE frames: lines beginning with `data: ` separated by blank lines.
+      // We take the first frame whose JSON has a JSON-RPC shape with `result` or `error`.
+      for (const line of raw.split('\n')) {
+        if (!line.startsWith('data: ')) continue;
+        const body = line.slice(6).trim();
+        if (!body) continue;
+        try {
+          const parsed = JSON.parse(body) as JsonRpcResponse<ToolsCallResult>;
+          if (parsed && (parsed.result !== undefined || parsed.error !== undefined)) {
+            return parsed;
+          }
+        } catch {
+          // not all data lines are well-formed; skip and keep scanning
+        }
+      }
+      throw new TwentyMcpClientError(
+        `Twenty /mcp SSE response had no JSON-RPC frame with result or error (raw: ${raw.slice(0, 200)})`,
+      );
+    }
+
+    return (await response.json()) as JsonRpcResponse<ToolsCallResult>;
   }
 
   async toolsCall(name: string, args: Record<string, unknown>): Promise<ToolsCallResult> {
@@ -76,7 +121,8 @@ export class TwentyMcpClient {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        Accept: 'application/json',
+        // Accept both — the MCP Streamable HTTP transport may respond with either.
+        Accept: 'application/json, text/event-stream',
         Authorization: `Bearer ${this.apiKey}`,
       },
       body: JSON.stringify(body),
@@ -90,7 +136,7 @@ export class TwentyMcpClient {
       );
     }
 
-    const json = (await response.json()) as JsonRpcResponse<ToolsCallResult>;
+    const json = await this.parseJsonRpcResponse(response);
 
     if (json.error) {
       throw new TwentyMcpClientError(json.error.message, json.error.code, json.error.data);
@@ -104,17 +150,25 @@ export class TwentyMcpClient {
   }
 
   /**
-   * Issue a GraphQL query or mutation against Twenty's /metadata endpoint.
-   * Used by access tools (roles, permissions, API keys) since Twenty does not
-   * expose inner MCP tools for these. Errors come back in the GraphQL
-   * `{errors: [...]}` envelope; we normalise to TwentyMcpClientError so callers
-   * don't branch on transport.
+   * Issue a GraphQL query or mutation against the chosen Twenty endpoint.
+   *
+   * Pass `endpoint: 'metadata'` for admin operations (roles, permissions, api keys,
+   * object/field metadata) — these live on /metadata and use `createOne<X>` mutation names.
+   *
+   * Pass `endpoint: 'graphql'` for workspace data operations (per-object CRUD, system-object
+   * bypass for noteTarget/timelineActivity) — these live on /graphql and use `create<X>`
+   * mutation names (NO `One` prefix).
+   *
+   * Errors come back in the GraphQL `{errors: [...]}` envelope; we normalise to
+   * TwentyMcpClientError so callers don't branch on transport.
    */
   async graphqlMutation<T = unknown>(
     query: string,
     variables: Record<string, unknown> = {},
+    endpoint: GraphqlEndpoint = 'metadata',
   ): Promise<T> {
-    const response = await this.fetchImpl(this.graphqlEndpoint, {
+    const url = this.graphqlEndpointFor(endpoint);
+    const response = await this.fetchImpl(url, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -127,7 +181,7 @@ export class TwentyMcpClient {
     if (!response.ok) {
       const text = await response.text().catch(() => '');
       throw new TwentyMcpClientError(
-        `Twenty /metadata returned ${response.status} ${response.statusText}${text ? `: ${text.slice(0, 500)}` : ''}`,
+        `Twenty /${endpoint} returned ${response.status} ${response.statusText}${text ? `: ${text.slice(0, 500)}` : ''}`,
         response.status,
       );
     }
@@ -142,7 +196,7 @@ export class TwentyMcpClient {
     }
 
     if (json.data === undefined) {
-      throw new TwentyMcpClientError('Twenty /metadata returned no data and no errors');
+      throw new TwentyMcpClientError(`Twenty /${endpoint} returned no data and no errors`);
     }
 
     return json.data;

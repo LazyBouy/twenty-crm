@@ -25,13 +25,13 @@ Permissions, role flags, and `agentic-grounds-1`'s admin status are **not consul
 
 ### The breakthrough: GraphQL bypasses the gate
 
-The `createOne<Object>` GraphQL resolver ([packages/twenty-server/src/engine/api/graphql/workspace-resolver-builder/factories/create-one-resolver.factory.ts](packages/twenty-server/src/engine/api/graphql/workspace-resolver-builder/factories/create-one-resolver.factory.ts)) **does NOT call** `CreateRecordService`. It calls `CommonCreateOneQueryRunnerService.execute` directly. That runner has only two checks: `assertMutationNotOnRemoteObject` and UUID validation — **no workflow/system gate**. So a GraphQL `createOneNoteTarget(data: {…})` from the same `agentic-grounds-1` API key works fine.
+The `createOne<Object>` GraphQL resolver ([packages/twenty-server/src/engine/api/graphql/workspace-resolver-builder/factories/create-one-resolver.factory.ts](packages/twenty-server/src/engine/api/graphql/workspace-resolver-builder/factories/create-one-resolver.factory.ts)) **does NOT call** `CreateRecordService`. It calls `CommonCreateOneQueryRunnerService.execute` directly. That runner has only two checks: `assertMutationNotOnRemoteObject` and UUID validation — **no workflow/system gate**. So a GraphQL `createNoteTarget(data: {…})` from the same `agentic-grounds-1` API key works fine.
 
 This means we can fix this **entirely in the MCP wrapper layer** without forking or patching twenty-server. The pattern already exists in [packages/twenty-mcp/src/tools/access.ts](packages/twenty-mcp/src/tools/access.ts) where GraphQL is used for resolvers Twenty doesn't expose as inner tools.
 
 ## Approach
 
-Add a focused tool `link_note_to_record` in a new file `packages/twenty-mcp/src/tools/note-targets.ts` that creates the `NoteTarget` row via the GraphQL `createOneNoteTarget` mutation. This bypasses the workflow gate cleanly, uses an existing pattern, requires no upstream changes, and is reversible.
+Add a focused tool `link_note_to_record` in a new file `packages/twenty-mcp/src/tools/note-targets.ts` that creates the `NoteTarget` row via the GraphQL `createNoteTarget` mutation. This bypasses the workflow gate cleanly, uses an existing pattern, requires no upstream changes, and is reversible.
 
 Optional companion: `link_timeline_activity` for parity (timeline activities are normally auto-generated, but giving agents a manual path closes the family). Defer if scope creep is a concern.
 
@@ -59,7 +59,7 @@ link_note_to_record({
 
 ### Create
 - `packages/twenty-mcp/src/tools/note-targets.ts` — Zod input schema + GraphQL builder + handler + tool definition for `link_note_to_record`. Mirrors the structure of `access.ts` (which uses the same GraphQL transport pattern).
-- `packages/twenty-mcp/src/__tests__/note-targets.test.ts` — assertion that the wrapper builds the right `createOneNoteTarget(data: {…})` mutation and validates exactly one target is set.
+- `packages/twenty-mcp/src/__tests__/note-targets.test.ts` — assertion that the wrapper builds the right `createNoteTarget(data: {…})` mutation and validates exactly one target is set.
 
 ### Modify
 - `packages/twenty-mcp/src/server.ts` — register `link_note_to_record` like the other typed tools.
@@ -94,7 +94,7 @@ export const linkNoteToRecordInputSchema = z
 
 const buildCreateNoteTarget = (args: z.infer<typeof linkNoteToRecordInputSchema>) => ({
   query: `mutation($data: NoteTargetCreateInput!) {
-    createOneNoteTarget(data: $data) {
+    createNoteTarget(data: $data) {
       id noteId targetCompanyId targetPersonId targetOpportunityId
     }
   }`,
@@ -127,7 +127,7 @@ export const noteTargetToolDefinitions = {
     title: 'Link a note to a CRM record (company / person / opportunity)',
     description:
       'Attaches an existing Note to a record so it appears under the record\'s "Notes" tab. ' +
-      'Routes through the GraphQL `createOneNoteTarget` mutation, NOT through `execute_tool` — ' +
+      'Routes through the GraphQL `createNoteTarget` mutation, NOT through `execute_tool` — ' +
       "Twenty's record-crud path blocks system-object creation with `Object cannot be created by workflow`. " +
       'Pass `noteId` plus exactly one of `targetCompanyId` / `targetPersonId` / `targetOpportunityId`. ' +
       'For multiple targets, call this tool once per target.',

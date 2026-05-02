@@ -78,7 +78,7 @@ export const createServer = ({
   );
 
   // Note-target linking — bypasses Twenty's record-crud workflow gate via
-  // GraphQL `createOneNoteTarget` because noteTarget is an isSystem object
+  // GraphQL `createNoteTarget` because noteTarget is an isSystem object
   // that the standard execute_tool path refuses to create. Always registered
   // (not gated behind enableMetadata) since it's a baseline CRM linkage op.
   const noteTargets = buildNoteTargetHandlers(client);

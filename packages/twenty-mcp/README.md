@@ -126,8 +126,11 @@ npx nx typecheck twenty-mcp
 
 Plans and retrospectives live in [plans/](./plans/):
 
-- [initial-design.md](./plans/initial-design.md) — the original design (tool surface, wrapper architecture, agent config snippets)
-- [crm-wrapper-audit-fix.md](./plans/crm-wrapper-audit-fix.md) — audit + patch for the CRM wrapper shape bugs
-- [crm-wrapper-audit-fix-retrospective.md](./plans/crm-wrapper-audit-fix-retrospective.md) — what shipped, why it shipped, and the contract-test layer added so it can't recur
-- [note-target-linking-fix.md](./plans/note-target-linking-fix.md) — `link_note_to_record` tool that bypasses Twenty's record-crud workflow gate via GraphQL `createOneNoteTarget`
-- [note-target-linking-fix-retrospective.md](./plans/note-target-linking-fix-retrospective.md) — the gate didn't say what its name implied; lessons on multi-path APIs
+**Read [CLAUDE.md](./CLAUDE.md) before modifying anything in `src/tools/` or shipping a new wrapper tool.** It contains the architecture invariants, the 9 lessons from the production bugs we shipped, and the required before-shipping checklist.
+
+Plans + retrospectives ([plans/](./plans/)):
+
+- [initial-design.md](./plans/initial-design.md) — original design (tool surface, wrapper architecture, agent config snippets)
+- [crm-wrapper-audit-fix.md](./plans/crm-wrapper-audit-fix.md) + [retrospective](./plans/crm-wrapper-audit-fix-retrospective.md) — bug 1: CRM `data:` / `filter:` wrapper shape mismatch
+- [note-target-linking-fix.md](./plans/note-target-linking-fix.md) + [retrospective](./plans/note-target-linking-fix-retrospective.md) — bug 2 (workflow gate) + bug 3 (`createOne<X>` mutation name)
+- [audit-and-safeguards.md](./plans/audit-and-safeguards.md) + [retrospective](./plans/audit-and-safeguards-retrospective.md) — bug 4 (`/metadata` vs `/graphql` endpoint routing) + structural safeguards (coverage test, capture scripts, two-env split, VPS-as-production guards)

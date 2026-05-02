@@ -283,8 +283,12 @@ const QUERY_ROUTES: Record<z.infer<typeof MetadataQueryKind>, QueryRoute> = {
   view_sorts: { transport: 'inner_tool', innerToolName: 'get_view_sorts' },
   roles: {
     transport: 'graphql',
+    // Query name is `getRoles` on /metadata, NOT `roles` (verified live against
+    // deployed Twenty — bug #5 from plans/audit-and-safeguards.md). Mutations
+    // for roles use createOne<X> convention; queries do NOT — they use getX
+    // for collection reads. Different convention per operation type.
     query:
-      'query { roles { id label description icon canUpdateAllSettings canAccessAllTools canReadAllObjectRecords canUpdateAllObjectRecords canSoftDeleteAllObjectRecords canDestroyAllObjectRecords canBeAssignedToUsers canBeAssignedToAgents canBeAssignedToApiKeys } }',
+      'query { getRoles { id label description icon canUpdateAllSettings canAccessAllTools canReadAllObjectRecords canUpdateAllObjectRecords canSoftDeleteAllObjectRecords canDestroyAllObjectRecords canBeAssignedToUsers canBeAssignedToAgents canBeAssignedToApiKeys } }',
   },
   api_keys: {
     transport: 'graphql',

@@ -121,8 +121,17 @@ packages/
 ├── twenty-client-sdk/     # Client SDK
 ├── twenty-apps/           # First-party apps
 ├── twenty-docker/         # Docker configs (incl. dev compose)
+├── twenty-mcp/            # External MCP proxy — READ packages/twenty-mcp/CLAUDE.md BEFORE editing
 └── twenty-utils/          # Repo utilities (incl. setup-dev-env.sh)
 ```
+
+### Package-level `CLAUDE.md` files take precedence
+
+When working inside a package directory, **the package's own `CLAUDE.md` (if present) overrides and extends repo-level guidance** for that package. Read it first.
+
+- [`packages/twenty-mcp/CLAUDE.md`](packages/twenty-mcp/CLAUDE.md) — **REQUIRED reading before editing `packages/twenty-mcp/`**. Contains: architecture invariants (3 transports, /metadata vs /graphql), the **Evaluation rules** (R1–R5: how "done" is defined; the framework that prevents the bug class that has cost ~1.1M+ tokens to date), the **Flawed framings catalog** (six wrong frames that produced production bugs — recognize them in flight), the **before-shipping checklist** with mechanical + evaluation gates, and pointers to the audit retrospectives. None of this is optional. The structural defenses (coverage tests, capture scripts, integration sweep) only work if the rules in that file are followed.
+
+If you are about to ship a wrapper / proxy / adapter in any other package, **read `packages/twenty-mcp/CLAUDE.md` anyway** — the rules are wrapper-class generalities, not Twenty-specific.
 
 ### Code Conventions
 Full rules live in `.cursor/rules/` (`code-style.mdc`, `file-structure.mdc`, `typescript-guidelines.mdc`, `react-general-guidelines.mdc`) and are auto-applied — read them when in doubt. The non-negotiables to know up front:

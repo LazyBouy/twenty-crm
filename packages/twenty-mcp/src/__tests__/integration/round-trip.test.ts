@@ -1,29 +1,58 @@
 /**
- * Live-fire integration test — gated behind `TWENTY_MCP_INTEGRATION=1`.
+ * Live-fire integration test — DESTRUCTIVE OPS. Run against LOCAL docker-compose
+ * Twenty only. Triple-gated:
+ *   - TWENTY_MCP_INTEGRATION=1     (enables the suite)
+ *   - INCLUDE_INTEGRATION=1         (jest config opts the path in)
+ *   - MCP_INTEGRATION_DESTRUCTIVE_OK=1 (acknowledges destructive ops)
  *
- * Skipped by default so unit-test runs stay fast and offline. When enabled,
- * exercises the full create → search → get → update → delete lifecycle
- * against a running Twenty (the docker-compose stack at
- * `${TWENTY_BASE_URL:-http://localhost:4440}/mcp`).
- *
- * This is the safety net for "the schema fixture matches reality" — if the
- * wrapper produces a payload Twenty actually rejects, this test fails loudly.
+ * Plus a runtime safety check: if TWENTY_BASE_URL points at the VPS host, the
+ * suite refuses to start. VPS = production. NEVER run destructive ops there.
  *
  * Run:
- *   TWENTY_MCP_INTEGRATION=1 \
- *   TWENTY_BASE_URL=http://localhost:4440 \
- *   TWENTY_API_KEY=<key> \
- *   npx jest src/__tests__/integration --testTimeout 30000
+ *   docker compose -f packages/twenty-docker/docker-compose.deploy.yml up -d
+ *   # mint a LOCAL api key from http://localhost:4440 → Settings → Developers
+ *   TWENTY_MCP_INTEGRATION=1 INCLUDE_INTEGRATION=1 \
+ *   MCP_INTEGRATION_DESTRUCTIVE_OK=1 \
+ *     npx dotenv -e .env.local -- jest src/__tests__/integration/round-trip.test.ts
+ *
+ * The companion vps-smoke.test.ts is the read-only counterpart for production.
  */
 import { buildCrmHandlers } from '../../tools/crm';
 import { buildNoteTargetHandlers } from '../../tools/note-targets';
 import { TwentyMcpClient, type ToolsCallResult } from '../../twenty-mcp-client';
 
 const enabled = process.env.TWENTY_MCP_INTEGRATION === '1';
-const describeIfEnabled = enabled ? describe : describe.skip;
+const destructiveOk = process.env.MCP_INTEGRATION_DESTRUCTIVE_OK === '1';
 
 const baseUrl = process.env.TWENTY_BASE_URL ?? 'http://localhost:4440';
 const apiKey = process.env.TWENTY_API_KEY ?? '';
+
+// Runtime safety: refuse to run destructive ops against anything that doesn't
+// look like a local Twenty. The check is intentionally loud — if you're seeing
+// this fire, your env is misconfigured and you were ABOUT to write to prod.
+const PROD_HOST_PATTERNS = [
+  /^https?:\/\/[\d.]+(:\d+)?\/?$/, // any IP-based host (the VPS is 100.115.12.29)
+  /\.example\.com/i,
+  /\.production\./i,
+  /[a-z]+\.crm\./i,
+];
+
+const isLikelyLocalUrl = (url: string): boolean => {
+  if (/localhost|127\.0\.0\.1|::1/.test(url)) return true;
+  for (const pat of PROD_HOST_PATTERNS) {
+    if (pat.test(url)) return false;
+  }
+  // be conservative — anything that's not localhost defaults to "treat as prod"
+  return false;
+};
+
+if (enabled && destructiveOk && !isLikelyLocalUrl(baseUrl)) {
+  throw new Error(
+    `[round-trip.test.ts] REFUSING TO START: TWENTY_BASE_URL=${baseUrl} does not look like a local Twenty, ` +
+      `but MCP_INTEGRATION_DESTRUCTIVE_OK=1 was set. Destructive integration tests must run only against local docker-compose Twenty. ` +
+      `Use vps-smoke.test.ts for read-only verification on the VPS.`,
+  );
+}
 
 /**
  * Twenty's execute_tool wraps the inner result inside a JSON string under
@@ -41,8 +70,12 @@ const unwrap = (r: ToolsCallResult): { success: boolean; result?: any; message?:
   }
 };
 
-describeIfEnabled('integration: people CRUD round-trip', () => {
-  if (enabled && !apiKey) {
+// Destructive describe blocks below ALSO check destructiveOk, in case the
+// suite is loaded with TWENTY_MCP_INTEGRATION=1 alone (read-only intent).
+const describeIfDestructive = enabled && destructiveOk ? describe : describe.skip;
+
+describeIfDestructive('integration: people CRUD round-trip', () => {
+  if (enabled && destructiveOk && !apiKey) {
     throw new Error('TWENTY_MCP_INTEGRATION=1 but TWENTY_API_KEY is not set');
   }
 
@@ -80,7 +113,12 @@ describeIfEnabled('integration: people CRUD round-trip', () => {
     if (!createdId) throw new Error('createdId not set; create test must succeed first');
     const r = unwrap(await crm.getRecord({ object: 'person', id: createdId }));
     expect(r.success).toBe(true);
-    expect(r.result?.id).toBe(createdId);
+    // Twenty's find_one_<sg> returns {result: {records: [<record>]}} — a wrapped
+    // single-element array, not the record directly. Document this in the tool
+    // description so agents don't make the same mistake.
+    const records = (r.result as { records?: Array<{ id: string }> })?.records;
+    expect(Array.isArray(records)).toBe(true);
+    expect(records?.[0]?.id).toBe(createdId);
   });
 
   it('updates the person (id + spread data)', async () => {
@@ -93,7 +131,13 @@ describeIfEnabled('integration: people CRUD round-trip', () => {
       }),
     );
     expect(r.success).toBe(true);
-    expect(r.result?.jobTitle).toBe('Audit Subject');
+    // Twenty's update_<sg> returns a SLIM response: {result: {id}} (not the
+    // updated record). To verify the field was applied, follow up with a
+    // separate find_one_<sg>.
+    expect((r.result as { id?: string })?.id).toBe(createdId);
+    const verify = unwrap(await crm.getRecord({ object: 'person', id: createdId }));
+    const records = (verify.result as { records?: Array<{ jobTitle?: string }> })?.records;
+    expect(records?.[0]?.jobTitle).toBe('Audit Subject');
   });
 
   it('deletes the person', async () => {
@@ -107,8 +151,8 @@ describeIfEnabled('integration: people CRUD round-trip', () => {
  * link_note_to_record verifies the GraphQL bypass works against a real Twenty.
  * If this passes, the workflow-gate workaround is genuinely effective.
  */
-describeIfEnabled('integration: link_note_to_record (GraphQL bypass)', () => {
-  if (enabled && !apiKey) {
+describeIfDestructive('integration: link_note_to_record (GraphQL bypass)', () => {
+  if (enabled && destructiveOk && !apiKey) {
     throw new Error('TWENTY_MCP_INTEGRATION=1 but TWENTY_API_KEY is not set');
   }
 
@@ -148,8 +192,8 @@ describeIfEnabled('integration: link_note_to_record (GraphQL bypass)', () => {
       await noteTargets.linkNoteToRecord({ noteId, targetCompanyId: companyId }),
     );
     expect(r.success).toBe(true);
-    // result is the GraphQL response { createOneNoteTarget: {...} }
-    const noteTarget = (r.result as { createOneNoteTarget?: any }).createOneNoteTarget;
+    // result is the GraphQL response { createNoteTarget: {...} }
+    const noteTarget = (r.result as { createNoteTarget?: any }).createNoteTarget;
     expect(noteTarget?.noteId).toBe(noteId);
     expect(noteTarget?.targetCompanyId).toBe(companyId);
   });
