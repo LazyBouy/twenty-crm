@@ -3,7 +3,7 @@
 > Issue(s): #3
 > Plan: packages/twenty-mcp/plans/issue-3-apply-plan-operand-field-type-validation.md
 > Audit cycles: 2 (round 1 BLOCKED with 3 critical + 4 high; round 2 CLEAN)
-> Commit: pending — filled by closer post-commit
+> Commit: 6fdd792869c754b593b1b854154e5cc746fb22ce
 > Written: 2026-05-02T20:35:00Z
 
 ## Forecast vs actual
@@ -92,17 +92,20 @@ For each lesson, propose where it should ingrain. The supervisor decides whether
 ## Diff summary
 
 ```
- packages/twenty-mcp/scripts/capture-inner-schemas.ts                |   4 +
- packages/twenty-mcp/src/__tests__/fixtures/inner-tool-schemas.json  | 156 ++++++++++++++--
- packages/twenty-mcp/src/__tests__/fixtures/tools-catalog.json       |   2 +-
- packages/twenty-mcp/src/__tests__/integration/round-trip.test.ts    |  60 ++++++
- packages/twenty-mcp/src/__tests__/metadata.test.ts                  | 107 +++++++++++
- packages/twenty-mcp/src/__tests__/views.test.ts                     | 208 ++++++++++++++++++++-
- packages/twenty-mcp/src/tools/metadata.ts                           |  31 ++-
- packages/twenty-mcp/src/tools/views.ts                              | 164 +++++++++++++++-
- 8 files changed, 701 insertions(+), 31 deletions(-)
+ ...-operand-field-type-validation-audit-round-1.md | 258 +++++++++++
+ ...-operand-field-type-validation-audit-round-2.md | 176 +++++++
+ ...-operand-field-type-validation-retrospective.md | 108 +++++
+ ...e-3-apply-plan-operand-field-type-validation.md | 511 +++++++++++++++++----
+ packages/twenty-mcp/plans/low-backlog.md           |   3 +
+ .../twenty-mcp/scripts/capture-inner-schemas.ts    |   4 +
+ .../fixtures/get-field-metadata-sample.json        |   9 +
+ .../src/__tests__/fixtures/inner-tool-schemas.json | 156 ++++++-
+ .../src/__tests__/fixtures/tools-catalog.json      |   2 +-
+ .../src/__tests__/integration/round-trip.test.ts   |  77 ++++
+ packages/twenty-mcp/src/__tests__/metadata.test.ts | 107 +++++
+ .../src/__tests__/views-coverage.test.ts           | 143 ++++++
+ packages/twenty-mcp/src/__tests__/views.test.ts    | 208 ++++++++-
+ packages/twenty-mcp/src/tools/metadata.ts          |  31 +-
+ packages/twenty-mcp/src/tools/views.ts             | 164 ++++++-
+ 15 files changed, 1824 insertions(+), 133 deletions(-)
 ```
-
-Plus untracked new files:
-- `packages/twenty-mcp/src/__tests__/fixtures/get-field-metadata-sample.json` (captured live response)
-- `packages/twenty-mcp/src/__tests__/views-coverage.test.ts` (mechanical drift verifier)
