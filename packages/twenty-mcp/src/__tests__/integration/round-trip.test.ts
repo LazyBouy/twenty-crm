@@ -21,6 +21,7 @@ import { buildCrmHandlers } from '../../tools/crm';
 import { buildMetadataHandlers } from '../../tools/metadata';
 import { buildNoteTargetHandlers } from '../../tools/note-targets';
 import { TwentyMcpClient, type ToolsCallResult } from '../../twenty-mcp-client';
+import { parseInnerOrGraphqlArray } from '../../utils/parse-metadata-array';
 
 const enabled = process.env.TWENTY_MCP_INTEGRATION === '1';
 const destructiveOk = process.env.MCP_INTEGRATION_DESTRUCTIVE_OK === '1';
@@ -211,11 +212,10 @@ describeIfDestructive('integration: link_note_to_record (GraphQL bypass)', () =>
  * This test is deliberately non-destructive: the bad filter is rejected by the
  * wrapper layer and never written to Twenty.
  *
- * Uses a known DATE_TIME field id (createdAt, captured from local stack during
- * round 2 implementation). The field is system-owned so it always exists.
- *
- * Field id: 5c1f7b98-a454-413a-8ef3-f0dcf5820ca7 (createdAt, DATE_TIME)
- * Captured from local stack: 2026-05-02
+ * The DATE_TIME field id is discovered dynamically in beforeAll via
+ * metadata_query({kind: 'fields'}) — no hardcoded workspace-scoped UUID.
+ * Any workspace with default stock data (createdAt on any object) will work.
+ * Assumes limit=200 is sufficient (stock workspace has far fewer than 200 fields).
  */
 describeIfDestructive('integration: operand validation — invalid operand rejected before reaching Twenty', () => {
   if (enabled && destructiveOk && !apiKey) {
@@ -225,8 +225,32 @@ describeIfDestructive('integration: operand validation — invalid operand rejec
   const client = new TwentyMcpClient({ baseUrl, apiKey });
   // Use a non-existent viewId — the validation fails before it's needed
   const FAKE_VIEW_ID = '00000000-0000-0000-0000-000000000000';
-  // The createdAt DATE_TIME field — always exists on all workspaces
-  const DATE_TIME_FIELD_ID = '5c1f7b98-a454-413a-8ef3-f0dcf5820ca7';
+
+  // Discovered dynamically in beforeAll — no hardcoded UUID.
+  let DATE_TIME_FIELD_ID: string;
+
+  beforeAll(async () => {
+    if (!enabled || !destructiveOk) return;
+    const metadata = buildMetadataHandlers(client, apiKey);
+    const result = await metadata.metadataQuery({ kind: 'fields', args: { limit: 200 } });
+    const text = (result.content[0] as { type: 'text'; text: string }).text;
+    const fields = parseInnerOrGraphqlArray<{ id: string; type: string }>(text);
+    const dateTimeField = fields.find((f) => f.type === 'DATE_TIME');
+    if (!dateTimeField) {
+      // Disambiguate "stock data missing" from "API shape changed" — the parsed shape
+      // is included so a future shape drift produces a clearer signal than a misleading
+      // "reseed" instruction.
+      const raw: unknown = JSON.parse(text);
+      const shape = Array.isArray(raw)
+        ? `array of ${raw.length}`
+        : `top-level object with keys [${Object.keys(raw as object).join(', ')}]`;
+      throw new Error(
+        `round-trip.test: no DATE_TIME field found in workspace (parsed: ${shape}). ` +
+          `Either reseed stock data, OR investigate response-shape drift.`,
+      );
+    }
+    DATE_TIME_FIELD_ID = dateTimeField.id;
+  });
 
   it('apply_plan CREATE_VIEW_FILTER with GREATER_THAN_OR_EQUAL on DATE_TIME is rejected by the proxy (never reaches Twenty)', async () => {
     const metadata = buildMetadataHandlers(client, apiKey);
@@ -266,16 +290,20 @@ describeIfDestructive('integration: operand validation — invalid operand rejec
     // landed with the bad operand on the DATE_TIME field. Without this step, a
     // future regression that bypasses the wrapper's rejection would still pass
     // the assertions above (Twenty would also reject — with a different error).
+    // Uses parseInnerOrGraphqlArray so the verification is non-vacuous regardless
+    // of whether view_filters routes through inner_tool or graphql transport.
     const viewFiltersResult = await metadata.metadataQuery({
       kind: 'view_filters',
       args: { limit: 200 },
     });
     const viewFiltersText = (viewFiltersResult.content[0] as { type: 'text'; text: string }).text;
-    const viewFiltersParsed = JSON.parse(viewFiltersText) as {
-      result?: Array<{ fieldMetadataId?: string; operand?: string }>;
-    };
-    const leakedRows = (viewFiltersParsed.result ?? []).filter(
-      (row) => row.fieldMetadataId === DATE_TIME_FIELD_ID && row.operand === 'GREATER_THAN_OR_EQUAL',
+    const viewFilterRows = parseInnerOrGraphqlArray<{
+      fieldMetadataId?: string;
+      operand?: string;
+    }>(viewFiltersText);
+    const leakedRows = viewFilterRows.filter(
+      (row) =>
+        row.fieldMetadataId === DATE_TIME_FIELD_ID && row.operand === 'GREATER_THAN_OR_EQUAL',
     );
     expect(leakedRows).toEqual([]);
   });

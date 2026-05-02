@@ -818,6 +818,40 @@ describe('metadata_apply_plan — operand validation (Layer 2)', () => {
   });
 });
 
+describe('metadata_apply_plan — apply_plan UPDATE_VIEW_FILTER does NOT forward fieldMetadataId', () => {
+  it('apply_plan UPDATE_VIEW_FILTER does NOT forward fieldMetadataId to inner tool', async () => {
+    // Exercises the argsTransform on the UPDATE_VIEW_FILTER dispatch entry (HIGH-1 fix).
+    // Without the argsTransform, fieldMetadataId leaks through the apply_plan path even
+    // though the direct handler strips it — the apply_plan path is a separate call site.
+    const { toolsCall, client, apiKey } = makeMetadataClientWithFieldType('SELECT');
+    const handlers = buildMetadataHandlers(client, apiKey);
+
+    await handlers.metadataApplyPlan({
+      mutations: [
+        {
+          key: 'k1',
+          op: 'UPDATE_VIEW_FILTER',
+          args: {
+            id: '00000000-0000-0000-0000-000000000001',
+            operand: 'IS',
+            value: 'TIER_A',
+            fieldMetadataId: '00000000-0000-0000-0000-000000000003',
+          },
+        },
+      ],
+    });
+
+    const updateCalls = toolsCall.mock.calls.filter(
+      (c) => (c[1] as { toolName: string })?.toolName === 'update_view_filter',
+    );
+    expect(updateCalls).toHaveLength(1);
+    const forwardedArgs = (updateCalls[0]?.[1] as { arguments: Record<string, unknown> })?.arguments ?? {};
+    expect(forwardedArgs).not.toHaveProperty('fieldMetadataId');
+    expect(forwardedArgs).toHaveProperty('id', '00000000-0000-0000-0000-000000000001');
+    expect(forwardedArgs).toHaveProperty('operand', 'IS');
+  });
+});
+
 describe('metadata_compute_plan_hash', () => {
   it('compute_plan_hash returns the same hash as sha256OfMutations', () => {
     const { toolsCall, graphqlMutation, client, apiKey } = makeClient();

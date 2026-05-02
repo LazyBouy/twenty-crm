@@ -93,12 +93,31 @@ describe('FIELD_TYPE_OPERAND_MAP matches twenty-front FILTER_OPERANDS_MAP', () =
         operands.push(opMatch[1]!);
       }
 
-      // Handle spread operators: ...emptyOperands and ...relationOperands
-      if (/\.\.\.emptyOperands/.test(arrContent)) {
-        operands.push('IS_EMPTY', 'IS_NOT_EMPTY');
-      }
-      if (/\.\.\.relationOperands/.test(arrContent)) {
-        operands.push('IS', 'IS_NOT');
+      // Handle spread operators: dynamically resolve any ...spreadName reference
+      // by looking up the const declaration in the same source file.
+      const spreadRe = /\.\.\.([\w]+)/g;
+      let spreadMatch: RegExpExecArray | null;
+      while ((spreadMatch = spreadRe.exec(arrContent)) !== null) {
+        const spreadName = spreadMatch[1]!;
+        // Find `const <spreadName> = [...]` or `const <spreadName>: ... = [...]` in source
+        const spreadDeclRe = new RegExp(
+          `const\\s+${spreadName}\\s*(?::[^=]+)?=\\s*\\[([\\s\\S]*?)\\]`,
+        );
+        const spreadDeclMatch = source.match(spreadDeclRe);
+        if (!spreadDeclMatch) {
+          throw new Error(
+            `views-coverage: spread operator "...${spreadName}" found in FILTER_OPERANDS_MAP ` +
+            `but no "const ${spreadName} = [...]" declaration found in the source file. ` +
+            `Update the parser in views-coverage.test.ts to handle this spread.`,
+          );
+        }
+        // Extract RecordFilterOperand.X members from the spread declaration
+        const spreadContent = spreadDeclMatch[1]!;
+        const spreadOpRe = /RecordFilterOperand\.([A-Z_]+)/g;
+        let spreadOpMatch: RegExpExecArray | null;
+        while ((spreadOpMatch = spreadOpRe.exec(spreadContent)) !== null) {
+          operands.push(spreadOpMatch[1]!);
+        }
       }
 
       result[fieldType] = operands;

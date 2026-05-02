@@ -217,6 +217,28 @@ describe('metadataUpdateViewFilter — operand validation', () => {
       (c) => (c[1] as { toolName: string })?.toolName === 'get_field_metadata',
     );
     expect(metadataCalls).toHaveLength(0);
+    // fieldMetadataId must NOT be forwarded to the inner tool
+    const updateCallArgs = updateCalls[0]?.[1]?.arguments ?? {};
+    expect(updateCallArgs).not.toHaveProperty('fieldMetadataId');
+  });
+
+  it('UPDATE_VIEW_FILTER with operand does NOT forward fieldMetadataId to inner tool', async () => {
+    const { toolsCall, client } = makeClient('SELECT');
+    const handlers = buildViewHandlers(client);
+    await handlers.metadataUpdateViewFilter({
+      id: '00000000-0000-0000-0000-000000000001',
+      operand: 'IS',
+      value: 'TIER_A',
+      fieldMetadataId: '00000000-0000-0000-0000-000000000003',
+    });
+    const updateCalls = toolsCall.mock.calls.filter(
+      (c) => (c[1] as { toolName: string })?.toolName === 'update_view_filter',
+    );
+    expect(updateCalls).toHaveLength(1);
+    const forwardedArgs = (updateCalls[0]?.[1] as { arguments: Record<string, unknown> })?.arguments ?? {};
+    expect(forwardedArgs).not.toHaveProperty('fieldMetadataId');
+    expect(forwardedArgs).toHaveProperty('id', '00000000-0000-0000-0000-000000000001');
+    expect(forwardedArgs).toHaveProperty('operand', 'IS');
   });
 });
 

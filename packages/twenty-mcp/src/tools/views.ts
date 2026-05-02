@@ -305,6 +305,20 @@ export const metadataCreateViewSortInputSchema = z.object({
   direction: ViewSortDirection.optional().describe('Defaults to ASC.'),
 });
 
+// --- Shared strip helper -----------------------------------------------------
+//
+// Strip wrapper-only `fieldMetadataId` before forwarding to Twenty's inner
+// update_view_filter. fieldMetadataId is needed by the wrapper to look up the
+// field type (for operand validation) but is NOT in Twenty's update_view_filter
+// input schema. Twenty currently passthrough-accepts the extra prop, but would
+// reject under .strict() Zod hardening — same #9 bug class.
+export const stripFieldMetadataIdFromUpdateArgs = (
+  args: Record<string, unknown>,
+): Record<string, unknown> => {
+  const { fieldMetadataId: _, ...rest } = args;
+  return rest;
+};
+
 // --- Handlers ----------------------------------------------------------------
 
 const wrapInExecute = (
@@ -365,7 +379,7 @@ export const buildViewHandlers = (client: TwentyMcpClient) => ({
       }
     }
 
-    return wrapInExecute(client, 'update_view_filter', args);
+    return wrapInExecute(client, 'update_view_filter', stripFieldMetadataIdFromUpdateArgs(args));
   },
 
   metadataCreateViewSort: (args: z.infer<typeof metadataCreateViewSortInputSchema>) =>
@@ -380,7 +394,7 @@ export const viewsDispatchEntries: Record<string, DispatchEntry> = {
   CREATE_VIEW_FIELD: { transport: 'inner_tool', innerToolName: 'create_view_field' },
   UPDATE_VIEW_FIELD: { transport: 'inner_tool', innerToolName: 'update_view_field' },
   CREATE_VIEW_FILTER: { transport: 'inner_tool', innerToolName: 'create_view_filter' },
-  UPDATE_VIEW_FILTER: { transport: 'inner_tool', innerToolName: 'update_view_filter' },
+  UPDATE_VIEW_FILTER: { transport: 'inner_tool', innerToolName: 'update_view_filter', argsTransform: stripFieldMetadataIdFromUpdateArgs },
   CREATE_VIEW_SORT: { transport: 'inner_tool', innerToolName: 'create_view_sort' },
 };
 
