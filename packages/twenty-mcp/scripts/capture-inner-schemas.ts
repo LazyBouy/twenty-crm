@@ -48,6 +48,7 @@ const CATALOG_PATH = join(HERE, '..', 'src', '__tests__', 'fixtures', 'tools-cat
 const STATIC_INNER_TOOL_NAMES = [
   // metadata (read)
   'get_field_metadata',
+  'get_object_metadata',
   // metadata
   'create_object_metadata',
   'update_object_metadata',
@@ -103,11 +104,27 @@ const extractSchemas = (
   if (!block?.text) return {};
   try {
     const parsed = JSON.parse(block.text) as Record<string, unknown>;
-    // learn_tools wraps as either { tools: { name: { schema, ... } } } or flat.
+    // learn_tools wraps as either { tools: { name: { schema, ... } } } (dict, older API),
+    // { tools: [{name, description?, inputSchema?}] } (array, current Twenty API per
+    // LearnToolsResult in twenty-server learn-tools.tool.ts), or a flat dict/array.
     const candidate =
       typeof parsed === 'object' && parsed !== null && 'tools' in parsed
-        ? (parsed as { tools: Record<string, unknown> }).tools
+        ? (parsed as { tools: unknown }).tools
         : parsed;
+
+    // Normalise array shape to a dict keyed by `name`. Without this, Object.entries()
+    // on an array produces numeric-string keys (`"0"`, `"1"`, ...) and the merge loop
+    // never updates the named static-tool entries — silently breaking the L1 capture
+    // mechanism. See issue #19 for the full failure mode.
+    if (Array.isArray(candidate)) {
+      const asDict: Record<string, unknown> = {};
+      for (const item of candidate as Array<{ name?: string }>) {
+        if (item && typeof item === 'object' && typeof item.name === 'string') {
+          asDict[item.name] = item;
+        }
+      }
+      return asDict;
+    }
 
     return candidate as Record<string, unknown>;
   } catch (err) {

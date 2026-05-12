@@ -1,8 +1,9 @@
 {
-  "$comment": "Inner-tool schema fixture \u2014 what Twenty's MCP /mcp endpoint accepts for each `execute_tool` call. Used by contract.test.ts to validate that wrapper handlers forward Twenty-shaped payloads. Two components per entry: `schema` (a JSON Schema validated with ajv when present) and `forbiddenTopLevel` (a list of keys that must NOT appear at the top of the forwarded args \u2014 catches the wrapper-bug class even when we don't have a full per-object schema). Refresh via scripts/capture-inner-schemas.ts when Twenty's server changes.",
-  "$source": "Captured from http://localhost:4440 on 2026-05-02T18:08:31.641Z (object=person). Hand-curated forbiddenTopLevel preserved.",
+  "$comment": "Inner-tool schema fixture — what Twenty's MCP /mcp endpoint accepts for each `execute_tool` call. Used by contract.test.ts to validate that wrapper handlers forward Twenty-shaped payloads. Two components per entry: `schema` (a JSON Schema validated with ajv when present) and `forbiddenTopLevel` (a list of keys that must NOT appear at the top of the forwarded args — catches the wrapper-bug class even when we don't have a full per-object schema). Refresh via scripts/capture-inner-schemas.ts when Twenty's server changes.",
+  "$source": "Captured from http://localhost:4440 on 2026-05-12T21:52:37.339Z (object=person). Hand-curated forbiddenTopLevel preserved.",
   "tools": {
-    "0": {
+    "find_<plural>": {
+      "$shape": "Twenty's find_<plural> generated per-object — top-level field filters spread alongside fixed keys. We can't enumerate field names statically (per-object), so the fixture only forbids wrapper-only keys.",
       "schema": {
         "name": "find_people",
         "description": "Search for People records using flexible filtering criteria. Supports exact matches, pattern matching, ranges, and null checks. Use limit/offset for pagination and orderBy for sorting. To find by ID, use filter: { id: { eq: \"record-id\" } }. Returns an array of matching records with their full data.",
@@ -415,6 +416,25 @@
               },
               "additionalProperties": false
             },
+            "doNotContact": {
+              "description": "Filter by doNotContact (boolean field)",
+              "type": "object",
+              "properties": {
+                "eq": {
+                  "description": "Equals",
+                  "type": "boolean"
+                },
+                "is": {
+                  "description": "Check for missing or empty values. Use \"NULL\" to find records with no value, \"NOT_NULL\" for records with a value",
+                  "type": "string",
+                  "enum": [
+                    "NULL",
+                    "NOT_NULL"
+                  ]
+                }
+              },
+              "additionalProperties": false
+            },
             "or": {
               "description": "OR condition - matches if ANY of the filters match",
               "type": "array",
@@ -816,6 +836,25 @@
                   },
                   "additionalProperties": false
                 },
+                "doNotContact": {
+                  "description": "Filter by doNotContact (boolean field)",
+                  "type": "object",
+                  "properties": {
+                    "eq": {
+                      "description": "Equals",
+                      "type": "boolean"
+                    },
+                    "is": {
+                      "description": "Check for missing or empty values. Use \"NULL\" to find records with no value, \"NOT_NULL\" for records with a value",
+                      "type": "string",
+                      "enum": [
+                        "NULL",
+                        "NOT_NULL"
+                      ]
+                    }
+                  },
+                  "additionalProperties": false
+                },
                 "or": {
                   "description": "OR condition - matches if ANY of the filters match",
                   "type": "array",
@@ -840,9 +879,16 @@
           }
         }
       },
-      "forbiddenTopLevel": []
+      "forbiddenTopLevel": [
+        "data",
+        "filter",
+        "object",
+        "query",
+        "fields"
+      ]
     },
-    "1": {
+    "find_one_<singular>": {
+      "$shape": "{ id: uuid }",
       "schema": {
         "name": "find_one_person",
         "description": "Retrieve a single Person record by its unique ID. Use this when you know the exact record ID and need the complete record data. Returns the full record or an error if not found.",
@@ -863,9 +909,15 @@
           "additionalProperties": false
         }
       },
-      "forbiddenTopLevel": []
+      "forbiddenTopLevel": [
+        "data",
+        "filter",
+        "object",
+        "fields"
+      ]
     },
-    "2": {
+    "create_<singular>": {
+      "$shape": "{ ...flat field keys at top level } — additionalProperties: false on the live schema",
       "schema": {
         "name": "create_person",
         "description": "Create a new Person record. Provide all required fields and any optional fields you want to set. The system will automatically handle timestamps and IDs. Returns the created record with all its data.",
@@ -1050,6 +1102,10 @@
               "type": "string",
               "format": "uuid",
               "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-4[0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12})$"
+            },
+            "doNotContact": {
+              "description": "Hard kill switch. Set true by qualification-routing-agent on negative replies. Orchestrator must check before staging.",
+              "type": "boolean"
             }
           },
           "required": [
@@ -1058,9 +1114,15 @@
           "additionalProperties": false
         }
       },
-      "forbiddenTopLevel": []
+      "forbiddenTopLevel": [
+        "data",
+        "filter",
+        "object",
+        "id"
+      ]
     },
-    "3": {
+    "update_<singular>": {
+      "$shape": "{ id: uuid, ...flat field keys at top level }",
       "schema": {
         "name": "update_person",
         "description": "Update an existing Person record. Provide the record ID and only the fields you want to change. Unspecified fields will remain unchanged. Returns the updated record with all current data.",
@@ -1246,6 +1308,10 @@
               "format": "uuid",
               "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-4[0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12})$"
             },
+            "doNotContact": {
+              "description": "Hard kill switch. Set true by qualification-routing-agent on negative replies. Orchestrator must check before staging.",
+              "type": "boolean"
+            },
             "id": {
               "type": "string",
               "format": "uuid",
@@ -1258,9 +1324,14 @@
           "additionalProperties": false
         }
       },
-      "forbiddenTopLevel": []
+      "forbiddenTopLevel": [
+        "data",
+        "filter",
+        "object"
+      ]
     },
-    "4": {
+    "delete_<singular>": {
+      "$shape": "{ id: uuid }",
       "schema": {
         "name": "delete_person",
         "description": "Delete a Person record by marking it as deleted. The record is hidden from normal queries. This is reversible. Use this to remove records.",
@@ -1281,9 +1352,14 @@
           "additionalProperties": false
         }
       },
-      "forbiddenTopLevel": []
+      "forbiddenTopLevel": [
+        "data",
+        "filter",
+        "object"
+      ]
     },
-    "5": {
+    "create_object_metadata": {
+      "$shape": "Flat: nameSingular, namePlural, labelSingular, labelPlural, etc.",
       "schema": {
         "name": "create_object_metadata",
         "description": "Create a new object metadata in the workspace data model.",
@@ -1337,9 +1413,14 @@
           "additionalProperties": false
         }
       },
-      "forbiddenTopLevel": []
+      "forbiddenTopLevel": [
+        "data",
+        "filter",
+        "input"
+      ]
     },
-    "6": {
+    "update_object_metadata": {
+      "$shape": "{ id, ...partial fields }",
       "schema": {
         "name": "update_object_metadata",
         "description": "Update an existing object metadata. Provide the object ID and the fields to update.",
@@ -1408,45 +1489,15 @@
           "additionalProperties": false
         }
       },
-      "forbiddenTopLevel": []
+      "forbiddenTopLevel": [
+        "data",
+        "filter",
+        "input",
+        "update"
+      ]
     },
-    "7": {
-      "schema": {
-        "name": "get_field_metadata",
-        "description": "Find fields metadata. Retrieve information about the fields of objects in the workspace data model.",
-        "inputSchema": {
-          "$schema": "https://json-schema.org/draft/2020-12/schema",
-          "type": "object",
-          "properties": {
-            "id": {
-              "description": "Unique identifier for the field metadata. If provided, returns a single field.",
-              "type": "string",
-              "format": "uuid",
-              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
-            },
-            "objectMetadataId": {
-              "description": "Filter fields by object metadata ID.",
-              "type": "string",
-              "format": "uuid",
-              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
-            },
-            "limit": {
-              "description": "Maximum number of fields to return.",
-              "default": 100,
-              "type": "integer",
-              "minimum": 1,
-              "maximum": 100
-            }
-          },
-          "required": [
-            "limit"
-          ],
-          "additionalProperties": false
-        }
-      },
-      "forbiddenTopLevel": []
-    },
-    "8": {
+    "create_field_metadata": {
+      "$shape": "Flat: objectMetadataId, type, name, label, etc.",
       "schema": {
         "name": "create_field_metadata",
         "description": "Create a new field metadata on an object. Specify the objectMetadataId and field properties.",
@@ -1545,9 +1596,14 @@
           "additionalProperties": false
         }
       },
-      "forbiddenTopLevel": []
+      "forbiddenTopLevel": [
+        "data",
+        "filter",
+        "input"
+      ]
     },
-    "9": {
+    "update_field_metadata": {
+      "$shape": "{ id, ...partial fields }",
       "schema": {
         "name": "update_field_metadata",
         "description": "Update an existing field metadata. Provide the field ID and the properties to update.",
@@ -1609,9 +1665,15 @@
           "additionalProperties": false
         }
       },
-      "forbiddenTopLevel": []
+      "forbiddenTopLevel": [
+        "data",
+        "filter",
+        "input",
+        "update"
+      ]
     },
-    "10": {
+    "create_many_field_metadata": {
+      "$shape": "{ fields: [...] } — wrapper key is `fields`",
       "schema": {
         "name": "create_many_field_metadata",
         "description": "Create multiple field metadata at once on one or more objects. More efficient than calling create_field_metadata multiple times. Each item follows the same schema as create_field_metadata.",
@@ -1725,9 +1787,13 @@
           "additionalProperties": false
         }
       },
-      "forbiddenTopLevel": []
+      "forbiddenTopLevel": [
+        "data",
+        "filter"
+      ]
     },
-    "11": {
+    "create_many_relation_fields": {
+      "$shape": "{ relations: [...] } — wrapper key is `relations`",
       "schema": {
         "name": "create_many_relation_fields",
         "description": "Create multiple relation fields between objects at once. This is the recommended way to add relations after creating objects and non-relation fields. Each item specifies the source object, target object, relation type, and labels for both sides of the relation.",
@@ -1807,238 +1873,13 @@
           "additionalProperties": false
         }
       },
-      "forbiddenTopLevel": []
+      "forbiddenTopLevel": [
+        "data",
+        "filter"
+      ]
     },
-    "12": {
-      "schema": {
-        "name": "create_view_field",
-        "description": "Add a new column to a view. View fields define which columns are shown in table or kanban views. First call get_field_metadata to find the fieldMetadataId of the column to add, and get_views to find the target viewId.",
-        "inputSchema": {
-          "$schema": "https://json-schema.org/draft/2020-12/schema",
-          "type": "object",
-          "properties": {
-            "viewId": {
-              "description": "The ID of the view to add the field to.",
-              "type": "string",
-              "format": "uuid",
-              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
-            },
-            "fieldMetadataId": {
-              "description": "The ID of the field metadata to add. Use get_field_metadata to find available fields.",
-              "type": "string",
-              "format": "uuid",
-              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
-            },
-            "isVisible": {
-              "description": "Whether the field is visible in the view.",
-              "default": true,
-              "type": "boolean"
-            },
-            "size": {
-              "description": "Column width in pixels.",
-              "default": 150,
-              "type": "integer",
-              "minimum": -9007199254740991,
-              "maximum": 9007199254740991
-            },
-            "position": {
-              "description": "Position of the field in the view (0-based).",
-              "default": 0,
-              "type": "number"
-            },
-            "aggregateOperation": {
-              "description": "Aggregate operation for this field (e.g., \"SUM\", \"AVG\", \"COUNT\").",
-              "type": "string",
-              "enum": [
-                "MIN",
-                "MAX",
-                "AVG",
-                "SUM",
-                "COUNT",
-                "COUNT_UNIQUE_VALUES",
-                "COUNT_EMPTY",
-                "COUNT_NOT_EMPTY",
-                "COUNT_TRUE",
-                "COUNT_FALSE",
-                "PERCENTAGE_EMPTY",
-                "PERCENTAGE_NOT_EMPTY"
-              ]
-            }
-          },
-          "required": [
-            "viewId",
-            "fieldMetadataId",
-            "isVisible",
-            "size",
-            "position"
-          ],
-          "additionalProperties": false
-        }
-      },
-      "forbiddenTopLevel": []
-    },
-    "13": {
-      "schema": {
-        "name": "update_view_field",
-        "description": "Update properties of a column in a view. You can change its visibility, width (size in pixels), display position, or aggregate operation. Use get_view_fields to find the view field ID. Constraints: position must not be -1, must not precede the label identifier field, and must not conflict with another field's position.",
-        "inputSchema": {
-          "$schema": "https://json-schema.org/draft/2020-12/schema",
-          "type": "object",
-          "properties": {
-            "id": {
-              "description": "The ID of the view field to update. Obtain this from get_view_fields.",
-              "type": "string",
-              "format": "uuid",
-              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
-            },
-            "isVisible": {
-              "description": "Whether the field is visible.",
-              "type": "boolean"
-            },
-            "size": {
-              "description": "Column width in pixels.",
-              "type": "integer",
-              "minimum": -9007199254740991,
-              "maximum": 9007199254740991
-            },
-            "position": {
-              "description": "Position of the field.",
-              "type": "number"
-            },
-            "aggregateOperation": {
-              "description": "Aggregate operation for this field.",
-              "type": "string",
-              "enum": [
-                "MIN",
-                "MAX",
-                "AVG",
-                "SUM",
-                "COUNT",
-                "COUNT_UNIQUE_VALUES",
-                "COUNT_EMPTY",
-                "COUNT_NOT_EMPTY",
-                "COUNT_TRUE",
-                "COUNT_FALSE",
-                "PERCENTAGE_EMPTY",
-                "PERCENTAGE_NOT_EMPTY"
-              ]
-            }
-          },
-          "required": [
-            "id"
-          ],
-          "additionalProperties": false
-        }
-      },
-      "forbiddenTopLevel": []
-    },
-    "14": {
-      "schema": {
-        "name": "create_many_view_fields",
-        "description": "Add multiple columns to a view at once. More efficient than calling create_view_field multiple times. Each item follows the same schema as create_view_field. All view fields can target the same or different views.",
-        "inputSchema": {
-          "$schema": "https://json-schema.org/draft/2020-12/schema",
-          "type": "object",
-          "properties": {
-            "viewFields": {
-              "description": "Array of view fields to create (1-50 items).",
-              "minItems": 1,
-              "maxItems": 50,
-              "type": "array",
-              "items": {
-                "type": "object",
-                "properties": {
-                  "viewId": {
-                    "description": "The ID of the view to add the field to.",
-                    "type": "string",
-                    "format": "uuid",
-                    "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
-                  },
-                  "fieldMetadataId": {
-                    "description": "The ID of the field metadata to add. Use get_field_metadata to find available fields.",
-                    "type": "string",
-                    "format": "uuid",
-                    "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
-                  },
-                  "isVisible": {
-                    "description": "Whether the field is visible in the view.",
-                    "default": true,
-                    "type": "boolean"
-                  },
-                  "size": {
-                    "description": "Column width in pixels.",
-                    "default": 150,
-                    "type": "integer",
-                    "minimum": -9007199254740991,
-                    "maximum": 9007199254740991
-                  },
-                  "position": {
-                    "description": "Position of the field in the view (0-based).",
-                    "default": 0,
-                    "type": "number"
-                  },
-                  "aggregateOperation": {
-                    "description": "Aggregate operation for this field (e.g., \"SUM\", \"AVG\", \"COUNT\").",
-                    "type": "string",
-                    "enum": [
-                      "MIN",
-                      "MAX",
-                      "AVG",
-                      "SUM",
-                      "COUNT",
-                      "COUNT_UNIQUE_VALUES",
-                      "COUNT_EMPTY",
-                      "COUNT_NOT_EMPTY",
-                      "COUNT_TRUE",
-                      "COUNT_FALSE",
-                      "PERCENTAGE_EMPTY",
-                      "PERCENTAGE_NOT_EMPTY"
-                    ]
-                  }
-                },
-                "required": [
-                  "viewId",
-                  "fieldMetadataId",
-                  "isVisible",
-                  "size",
-                  "position"
-                ],
-                "additionalProperties": false
-              }
-            }
-          },
-          "required": [
-            "viewFields"
-          ],
-          "additionalProperties": false
-        }
-      },
-      "forbiddenTopLevel": []
-    },
-    "15": {
-      "schema": {
-        "name": "get_view_filters",
-        "description": "List all filters applied to a view. Each filter defines a condition that records must match to appear in the view.",
-        "inputSchema": {
-          "$schema": "https://json-schema.org/draft/2020-12/schema",
-          "type": "object",
-          "properties": {
-            "viewId": {
-              "description": "ID of the view to list filters for. Obtain this from get_views.",
-              "type": "string",
-              "format": "uuid",
-              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
-            }
-          },
-          "required": [
-            "viewId"
-          ],
-          "additionalProperties": false
-        }
-      },
-      "forbiddenTopLevel": []
-    },
-    "16": {
+    "create_view": {
+      "$shape": "Flat: name, objectNameSingular, visibility, type?, icon?, etc.",
       "schema": {
         "name": "create_view",
         "description": "Create a new view for an object. Views define how records are displayed. For KANBAN views, mainGroupByFieldName is required and must be a SELECT field (e.g., \"stage\", \"status\"). For CALENDAR views, calendarFieldName and calendarLayout are required.",
@@ -2135,9 +1976,14 @@
           "additionalProperties": false
         }
       },
-      "forbiddenTopLevel": []
+      "forbiddenTopLevel": [
+        "data",
+        "filter",
+        "input"
+      ]
     },
-    "17": {
+    "update_view": {
+      "$shape": "{ id, name?, icon? }",
       "schema": {
         "name": "update_view",
         "description": "Update an existing view. You can change the name and icon.",
@@ -2166,9 +2012,233 @@
           "additionalProperties": false
         }
       },
-      "forbiddenTopLevel": []
+      "forbiddenTopLevel": [
+        "data",
+        "filter",
+        "input",
+        "update"
+      ]
     },
-    "18": {
+    "create_view_field": {
+      "schema": {
+        "name": "create_view_field",
+        "description": "Add a new column to a view. View fields define which columns are shown in table or kanban views. First call get_field_metadata to find the fieldMetadataId of the column to add, and get_views to find the target viewId.",
+        "inputSchema": {
+          "$schema": "https://json-schema.org/draft/2020-12/schema",
+          "type": "object",
+          "properties": {
+            "viewId": {
+              "description": "The ID of the view to add the field to.",
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "fieldMetadataId": {
+              "description": "The ID of the field metadata to add. Use get_field_metadata to find available fields.",
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "isVisible": {
+              "description": "Whether the field is visible in the view.",
+              "default": true,
+              "type": "boolean"
+            },
+            "size": {
+              "description": "Column width in pixels.",
+              "default": 150,
+              "type": "integer",
+              "minimum": -9007199254740991,
+              "maximum": 9007199254740991
+            },
+            "position": {
+              "description": "Position of the field in the view (0-based).",
+              "default": 0,
+              "type": "number"
+            },
+            "aggregateOperation": {
+              "description": "Aggregate operation for this field (e.g., \"SUM\", \"AVG\", \"COUNT\").",
+              "type": "string",
+              "enum": [
+                "MIN",
+                "MAX",
+                "AVG",
+                "SUM",
+                "COUNT",
+                "COUNT_UNIQUE_VALUES",
+                "COUNT_EMPTY",
+                "COUNT_NOT_EMPTY",
+                "COUNT_TRUE",
+                "COUNT_FALSE",
+                "PERCENTAGE_EMPTY",
+                "PERCENTAGE_NOT_EMPTY"
+              ]
+            }
+          },
+          "required": [
+            "viewId",
+            "fieldMetadataId",
+            "isVisible",
+            "size",
+            "position"
+          ],
+          "additionalProperties": false
+        }
+      },
+      "forbiddenTopLevel": [
+        "data",
+        "filter",
+        "input"
+      ]
+    },
+    "update_view_field": {
+      "schema": {
+        "name": "update_view_field",
+        "description": "Update properties of a column in a view. You can change its visibility, width (size in pixels), display position, or aggregate operation. Use get_view_fields to find the view field ID. Constraints: position must not be -1, must not precede the label identifier field, and must not conflict with another field's position.",
+        "inputSchema": {
+          "$schema": "https://json-schema.org/draft/2020-12/schema",
+          "type": "object",
+          "properties": {
+            "id": {
+              "description": "The ID of the view field to update. Obtain this from get_view_fields.",
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "isVisible": {
+              "description": "Whether the field is visible.",
+              "type": "boolean"
+            },
+            "size": {
+              "description": "Column width in pixels.",
+              "type": "integer",
+              "minimum": -9007199254740991,
+              "maximum": 9007199254740991
+            },
+            "position": {
+              "description": "Position of the field.",
+              "type": "number"
+            },
+            "aggregateOperation": {
+              "description": "Aggregate operation for this field.",
+              "type": "string",
+              "enum": [
+                "MIN",
+                "MAX",
+                "AVG",
+                "SUM",
+                "COUNT",
+                "COUNT_UNIQUE_VALUES",
+                "COUNT_EMPTY",
+                "COUNT_NOT_EMPTY",
+                "COUNT_TRUE",
+                "COUNT_FALSE",
+                "PERCENTAGE_EMPTY",
+                "PERCENTAGE_NOT_EMPTY"
+              ]
+            }
+          },
+          "required": [
+            "id"
+          ],
+          "additionalProperties": false
+        }
+      },
+      "forbiddenTopLevel": [
+        "data",
+        "filter",
+        "input",
+        "update"
+      ]
+    },
+    "create_many_view_fields": {
+      "$shape": "{ viewFields: [...] }",
+      "schema": {
+        "name": "create_many_view_fields",
+        "description": "Add multiple columns to a view at once. More efficient than calling create_view_field multiple times. Each item follows the same schema as create_view_field. All view fields can target the same or different views.",
+        "inputSchema": {
+          "$schema": "https://json-schema.org/draft/2020-12/schema",
+          "type": "object",
+          "properties": {
+            "viewFields": {
+              "description": "Array of view fields to create (1-50 items).",
+              "minItems": 1,
+              "maxItems": 50,
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "viewId": {
+                    "description": "The ID of the view to add the field to.",
+                    "type": "string",
+                    "format": "uuid",
+                    "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                  },
+                  "fieldMetadataId": {
+                    "description": "The ID of the field metadata to add. Use get_field_metadata to find available fields.",
+                    "type": "string",
+                    "format": "uuid",
+                    "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                  },
+                  "isVisible": {
+                    "description": "Whether the field is visible in the view.",
+                    "default": true,
+                    "type": "boolean"
+                  },
+                  "size": {
+                    "description": "Column width in pixels.",
+                    "default": 150,
+                    "type": "integer",
+                    "minimum": -9007199254740991,
+                    "maximum": 9007199254740991
+                  },
+                  "position": {
+                    "description": "Position of the field in the view (0-based).",
+                    "default": 0,
+                    "type": "number"
+                  },
+                  "aggregateOperation": {
+                    "description": "Aggregate operation for this field (e.g., \"SUM\", \"AVG\", \"COUNT\").",
+                    "type": "string",
+                    "enum": [
+                      "MIN",
+                      "MAX",
+                      "AVG",
+                      "SUM",
+                      "COUNT",
+                      "COUNT_UNIQUE_VALUES",
+                      "COUNT_EMPTY",
+                      "COUNT_NOT_EMPTY",
+                      "COUNT_TRUE",
+                      "COUNT_FALSE",
+                      "PERCENTAGE_EMPTY",
+                      "PERCENTAGE_NOT_EMPTY"
+                    ]
+                  }
+                },
+                "required": [
+                  "viewId",
+                  "fieldMetadataId",
+                  "isVisible",
+                  "size",
+                  "position"
+                ],
+                "additionalProperties": false
+              }
+            }
+          },
+          "required": [
+            "viewFields"
+          ],
+          "additionalProperties": false
+        }
+      },
+      "forbiddenTopLevel": [
+        "data",
+        "filter"
+      ]
+    },
+    "create_view_filter": {
       "schema": {
         "name": "create_view_filter",
         "description": "Add a filter to a view. Use list_object_metadata_items to get fieldMetadataId values.",
@@ -2189,7 +2259,7 @@
               "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
             },
             "operand": {
-              "description": "Filter operator. Valid operators per field type \u2014 TEXT/EMAILS/FULL_NAME: CONTAINS, DOES_NOT_CONTAIN, IS_EMPTY, IS_NOT_EMPTY. NUMBER/NUMERIC: IS, IS_NOT, GREATER_THAN_OR_EQUAL, LESS_THAN_OR_EQUAL, IS_EMPTY, IS_NOT_EMPTY. CURRENCY: GREATER_THAN_OR_EQUAL, LESS_THAN_OR_EQUAL, IS_EMPTY, IS_NOT_EMPTY. DATE/DATE_TIME: IS, IS_RELATIVE, IS_IN_PAST, IS_IN_FUTURE, IS_TODAY, IS_BEFORE, IS_AFTER, IS_EMPTY, IS_NOT_EMPTY. SELECT: IS, IS_NOT, IS_EMPTY, IS_NOT_EMPTY. MULTI_SELECT/ARRAY: CONTAINS, DOES_NOT_CONTAIN, IS_EMPTY, IS_NOT_EMPTY. RELATION: IS, IS_NOT, IS_EMPTY, IS_NOT_EMPTY. BOOLEAN: IS.",
+              "description": "Filter operator. Valid operators per field type — TEXT/EMAILS/FULL_NAME: CONTAINS, DOES_NOT_CONTAIN, IS_EMPTY, IS_NOT_EMPTY. NUMBER/NUMERIC: IS, IS_NOT, GREATER_THAN_OR_EQUAL, LESS_THAN_OR_EQUAL, IS_EMPTY, IS_NOT_EMPTY. CURRENCY: GREATER_THAN_OR_EQUAL, LESS_THAN_OR_EQUAL, IS_EMPTY, IS_NOT_EMPTY. DATE/DATE_TIME: IS, IS_RELATIVE, IS_IN_PAST, IS_IN_FUTURE, IS_TODAY, IS_BEFORE, IS_AFTER, IS_EMPTY, IS_NOT_EMPTY. SELECT: IS, IS_NOT, IS_EMPTY, IS_NOT_EMPTY. MULTI_SELECT/ARRAY: CONTAINS, DOES_NOT_CONTAIN, IS_EMPTY, IS_NOT_EMPTY. RELATION: IS, IS_NOT, IS_EMPTY, IS_NOT_EMPTY. BOOLEAN: IS.",
               "type": "string",
               "enum": [
                 "IS",
@@ -2238,7 +2308,7 @@
               ]
             },
             "subFieldName": {
-              "description": "Required for composite fields \u2014 e.g. \"amountMicros\" for CURRENCY, \"addressCity\" for ADDRESS, \"firstName\" or \"lastName\" for FULL_NAME.",
+              "description": "Required for composite fields — e.g. \"amountMicros\" for CURRENCY, \"addressCity\" for ADDRESS, \"firstName\" or \"lastName\" for FULL_NAME.",
               "type": "string"
             }
           },
@@ -2251,9 +2321,13 @@
           "additionalProperties": false
         }
       },
-      "forbiddenTopLevel": []
+      "forbiddenTopLevel": [
+        "data",
+        "filter",
+        "input"
+      ]
     },
-    "19": {
+    "update_view_filter": {
       "schema": {
         "name": "update_view_filter",
         "description": "Update a filter on a view. Use get_view_filters to find the filter ID.",
@@ -2327,9 +2401,14 @@
           "additionalProperties": false
         }
       },
-      "forbiddenTopLevel": []
+      "forbiddenTopLevel": [
+        "data",
+        "filter",
+        "input",
+        "update"
+      ]
     },
-    "20": {
+    "create_view_sort": {
       "schema": {
         "name": "create_view_sort",
         "description": "Add a sort to a view. Use list_object_metadata_items to get fieldMetadataId values.",
@@ -2367,12 +2446,17 @@
           "additionalProperties": false
         }
       },
-      "forbiddenTopLevel": []
+      "forbiddenTopLevel": [
+        "data",
+        "filter",
+        "input"
+      ]
     },
-    "21": {
+    "create_complete_workflow": {
+      "$shape": "Flat: name, description?, trigger, steps, stepPositions?, edges?, activate?",
       "schema": {
         "name": "create_complete_workflow",
-        "description": "Create a complete workflow with trigger, steps, and connections in a single operation.\n\nCRITICAL SCHEMA REQUIREMENTS:\n- Trigger type MUST be one of: DATABASE_EVENT, MANUAL, CRON, WEBHOOK\n- NEVER use \"RECORD_CREATED\" - this is invalid. Use \"DATABASE_EVENT\" instead.\n- Each step MUST include: id (must be a valid UUID), name, type, valid, settings\n- CREATE_RECORD actions MUST have objectName and objectRecord in settings.input\n- objectRecord must contain actual field values, not just field names\n- Use \"trigger\" as stepId for trigger step in stepPositions and edges\n\nCommon mistakes to avoid:\n- Using \"RECORD_CREATED\" instead of \"DATABASE_EVENT\"\n- Missing the \"name\" and \"valid\" fields in steps\n- Missing the \"objectRecord\" field in CREATE_RECORD actions\n- Using \"fieldsToUpdate\" instead of \"objectRecord\" in CREATE_RECORD actions\n- Including CODE steps in this tool \u2014 this tool does NOT create the underlying logic function needed by CODE steps. Instead, create the workflow without CODE steps first, then add CODE steps individually using create_workflow_version_step (which properly creates the logic function), then call update_logic_function_source to define the code.\n\nIMPORTANT: The tool schema provides comprehensive field descriptions, examples, and validation rules. Always refer to the schema for:\n- Field requirements and data types\n- Common object patterns and field structures\n- Proper relationship field formats\n- Variable reference syntax: {{trigger.fieldName}} for trigger data, {{<step-id>.result.fieldName}} for step outputs (step-id is the step's UUID, not its name)\n- Error handling options\n\nThis is the most efficient way for AI to create workflows as it handles all the complexity in one call.",
+        "description": "Create a complete workflow with trigger, steps, and connections in a single operation.\n\nCRITICAL SCHEMA REQUIREMENTS:\n- Trigger type MUST be one of: DATABASE_EVENT, MANUAL, CRON, WEBHOOK\n- NEVER use \"RECORD_CREATED\" - this is invalid. Use \"DATABASE_EVENT\" instead.\n- Each step MUST include: id (must be a valid UUID), name, type, valid, settings\n- CREATE_RECORD actions MUST have objectName and objectRecord in settings.input\n- objectRecord must contain actual field values, not just field names\n- Use \"trigger\" as stepId for trigger step in stepPositions and edges\n\nCommon mistakes to avoid:\n- Using \"RECORD_CREATED\" instead of \"DATABASE_EVENT\"\n- Missing the \"name\" and \"valid\" fields in steps\n- Missing the \"objectRecord\" field in CREATE_RECORD actions\n- Using \"fieldsToUpdate\" instead of \"objectRecord\" in CREATE_RECORD actions\n- Including CODE steps in this tool — this tool does NOT create the underlying logic function needed by CODE steps. Instead, create the workflow without CODE steps first, then add CODE steps individually using create_workflow_version_step (which properly creates the logic function), then call update_logic_function_source to define the code.\n\nIMPORTANT: The tool schema provides comprehensive field descriptions, examples, and validation rules. Always refer to the schema for:\n- Field requirements and data types\n- Common object patterns and field structures\n- Proper relationship field formats\n- Variable reference syntax: {{trigger.fieldName}} for trigger data, {{<step-id>.result.fieldName}} for step outputs (step-id is the step's UUID, not its name)\n- Error handling options\n\nThis is the most efficient way for AI to create workflows as it handles all the complexity in one call.",
         "inputSchema": {
           "$schema": "https://json-schema.org/draft/2020-12/schema",
           "type": "object",
@@ -3031,7 +3115,7 @@
                             "type": "object",
                             "properties": {
                               "logicFunctionId": {
-                                "description": "The ID of the logic function that holds the code. This is auto-generated when a CODE step is created via create_workflow_version_step \u2014 do NOT set this manually.",
+                                "description": "The ID of the logic function that holds the code. This is auto-generated when a CODE step is created via create_workflow_version_step — do NOT set this manually.",
                                 "type": "string"
                               },
                               "logicFunctionInput": {
@@ -5988,9 +6072,67 @@
           "additionalProperties": false
         }
       },
-      "forbiddenTopLevel": []
+      "forbiddenTopLevel": [
+        "data",
+        "filter",
+        "input"
+      ]
     },
-    "22": {
+    "activate_workflow_version": {
+      "schema": {
+        "name": "activate_workflow_version",
+        "description": "Activate a workflow version. This makes the workflow version active and available for execution.",
+        "inputSchema": {
+          "$schema": "https://json-schema.org/draft/2020-12/schema",
+          "type": "object",
+          "properties": {
+            "workflowVersionId": {
+              "description": "The UUID of the workflow version to activate",
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            }
+          },
+          "required": [
+            "workflowVersionId"
+          ],
+          "additionalProperties": false
+        }
+      },
+      "forbiddenTopLevel": [
+        "data",
+        "filter",
+        "input"
+      ]
+    },
+    "deactivate_workflow_version": {
+      "schema": {
+        "name": "deactivate_workflow_version",
+        "description": "Deactivate a workflow version. This makes the workflow version inactive and unavailable for execution.",
+        "inputSchema": {
+          "$schema": "https://json-schema.org/draft/2020-12/schema",
+          "type": "object",
+          "properties": {
+            "workflowVersionId": {
+              "description": "The UUID of the workflow version to deactivate",
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            }
+          },
+          "required": [
+            "workflowVersionId"
+          ],
+          "additionalProperties": false
+        }
+      },
+      "forbiddenTopLevel": [
+        "data",
+        "filter",
+        "input"
+      ]
+    },
+    "create_workflow_version_step": {
       "schema": {
         "name": "create_workflow_version_step",
         "description": "Create a new step in a workflow version. This adds a step to the specified workflow version with the given configuration. If parentStepId is not provided, the step will be appended at the end of the workflow.",
@@ -6165,9 +6307,13 @@
           ]
         }
       },
-      "forbiddenTopLevel": []
+      "forbiddenTopLevel": [
+        "data",
+        "filter",
+        "input"
+      ]
     },
-    "23": {
+    "update_workflow_version_step": {
       "schema": {
         "name": "update_workflow_version_step",
         "description": "Update an existing step in a workflow version. This modifies the step configuration.",
@@ -6250,7 +6396,7 @@
                               "type": "object",
                               "properties": {
                                 "logicFunctionId": {
-                                  "description": "The ID of the logic function that holds the code. This is auto-generated when a CODE step is created via create_workflow_version_step \u2014 do NOT set this manually.",
+                                  "description": "The ID of the logic function that holds the code. This is auto-generated when a CODE step is created via create_workflow_version_step — do NOT set this manually.",
                                   "type": "string"
                                 },
                                 "logicFunctionInput": {
@@ -9145,9 +9291,14 @@
           "additionalProperties": false
         }
       },
-      "forbiddenTopLevel": []
+      "forbiddenTopLevel": [
+        "data",
+        "filter",
+        "input",
+        "update"
+      ]
     },
-    "24": {
+    "create_workflow_version_edge": {
       "schema": {
         "name": "create_workflow_version_edge",
         "description": "Create a connection (edge) between two workflow steps. This defines the flow between steps.",
@@ -9217,9 +9368,13 @@
           "additionalProperties": false
         }
       },
-      "forbiddenTopLevel": []
+      "forbiddenTopLevel": [
+        "data",
+        "filter",
+        "input"
+      ]
     },
-    "25": {
+    "create_draft_from_workflow_version": {
       "schema": {
         "name": "create_draft_from_workflow_version",
         "description": "Create a new draft workflow version from an existing one. This allows for iterative workflow development.",
@@ -9247,365 +9402,6 @@
           "additionalProperties": false
         }
       },
-      "forbiddenTopLevel": []
-    },
-    "26": {
-      "schema": {
-        "name": "activate_workflow_version",
-        "description": "Activate a workflow version. This makes the workflow version active and available for execution.",
-        "inputSchema": {
-          "$schema": "https://json-schema.org/draft/2020-12/schema",
-          "type": "object",
-          "properties": {
-            "workflowVersionId": {
-              "description": "The UUID of the workflow version to activate",
-              "type": "string",
-              "format": "uuid",
-              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
-            }
-          },
-          "required": [
-            "workflowVersionId"
-          ],
-          "additionalProperties": false
-        }
-      },
-      "forbiddenTopLevel": []
-    },
-    "27": {
-      "schema": {
-        "name": "deactivate_workflow_version",
-        "description": "Deactivate a workflow version. This makes the workflow version inactive and unavailable for execution.",
-        "inputSchema": {
-          "$schema": "https://json-schema.org/draft/2020-12/schema",
-          "type": "object",
-          "properties": {
-            "workflowVersionId": {
-              "description": "The UUID of the workflow version to deactivate",
-              "type": "string",
-              "format": "uuid",
-              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
-            }
-          },
-          "required": [
-            "workflowVersionId"
-          ],
-          "additionalProperties": false
-        }
-      },
-      "forbiddenTopLevel": []
-    },
-    "find_<plural>": {
-      "$shape": "Twenty's find_<plural> generated per-object \u2014 top-level field filters spread alongside fixed keys. We can't enumerate field names statically (per-object), so the fixture only forbids wrapper-only keys.",
-      "schema": null,
-      "forbiddenTopLevel": [
-        "data",
-        "filter",
-        "object",
-        "query",
-        "fields"
-      ]
-    },
-    "find_one_<singular>": {
-      "$shape": "{ id: uuid }",
-      "schema": {
-        "type": "object",
-        "additionalProperties": false,
-        "required": [
-          "id"
-        ],
-        "properties": {
-          "id": {
-            "type": "string",
-            "minLength": 1
-          }
-        }
-      },
-      "forbiddenTopLevel": [
-        "data",
-        "filter",
-        "object",
-        "fields"
-      ]
-    },
-    "create_<singular>": {
-      "$shape": "{ ...flat field keys at top level } \u2014 additionalProperties: false on the live schema",
-      "schema": null,
-      "forbiddenTopLevel": [
-        "data",
-        "filter",
-        "object",
-        "id"
-      ]
-    },
-    "update_<singular>": {
-      "$shape": "{ id: uuid, ...flat field keys at top level }",
-      "schema": null,
-      "forbiddenTopLevel": [
-        "data",
-        "filter",
-        "object"
-      ]
-    },
-    "delete_<singular>": {
-      "$shape": "{ id: uuid }",
-      "schema": {
-        "type": "object",
-        "additionalProperties": false,
-        "required": [
-          "id"
-        ],
-        "properties": {
-          "id": {
-            "type": "string",
-            "minLength": 1
-          }
-        }
-      },
-      "forbiddenTopLevel": [
-        "data",
-        "filter",
-        "object"
-      ]
-    },
-    "create_object_metadata": {
-      "$shape": "Flat: nameSingular, namePlural, labelSingular, labelPlural, etc.",
-      "schema": null,
-      "forbiddenTopLevel": [
-        "data",
-        "filter",
-        "input"
-      ]
-    },
-    "update_object_metadata": {
-      "$shape": "{ id, ...partial fields }",
-      "schema": null,
-      "forbiddenTopLevel": [
-        "data",
-        "filter",
-        "input",
-        "update"
-      ]
-    },
-    "create_field_metadata": {
-      "$shape": "Flat: objectMetadataId, type, name, label, etc.",
-      "schema": null,
-      "forbiddenTopLevel": [
-        "data",
-        "filter",
-        "input"
-      ]
-    },
-    "update_field_metadata": {
-      "$shape": "{ id, ...partial fields }",
-      "schema": null,
-      "forbiddenTopLevel": [
-        "data",
-        "filter",
-        "input",
-        "update"
-      ]
-    },
-    "create_many_field_metadata": {
-      "$shape": "{ fields: [...] } \u2014 wrapper key is `fields`",
-      "schema": {
-        "type": "object",
-        "required": [
-          "fields"
-        ],
-        "properties": {
-          "fields": {
-            "type": "array",
-            "minItems": 1
-          }
-        }
-      },
-      "forbiddenTopLevel": [
-        "data",
-        "filter"
-      ]
-    },
-    "create_many_relation_fields": {
-      "$shape": "{ relations: [...] } \u2014 wrapper key is `relations`",
-      "schema": {
-        "type": "object",
-        "required": [
-          "relations"
-        ],
-        "properties": {
-          "relations": {
-            "type": "array",
-            "minItems": 1
-          }
-        }
-      },
-      "forbiddenTopLevel": [
-        "data",
-        "filter"
-      ]
-    },
-    "create_view": {
-      "$shape": "Flat: name, objectNameSingular, visibility, type?, icon?, etc.",
-      "schema": null,
-      "forbiddenTopLevel": [
-        "data",
-        "filter",
-        "input"
-      ]
-    },
-    "update_view": {
-      "$shape": "{ id, name?, icon? }",
-      "schema": null,
-      "forbiddenTopLevel": [
-        "data",
-        "filter",
-        "input",
-        "update"
-      ]
-    },
-    "create_view_field": {
-      "schema": null,
-      "forbiddenTopLevel": [
-        "data",
-        "filter",
-        "input"
-      ]
-    },
-    "update_view_field": {
-      "schema": null,
-      "forbiddenTopLevel": [
-        "data",
-        "filter",
-        "input",
-        "update"
-      ]
-    },
-    "create_many_view_fields": {
-      "$shape": "{ viewFields: [...] }",
-      "schema": {
-        "type": "object",
-        "required": [
-          "viewFields"
-        ],
-        "properties": {
-          "viewFields": {
-            "type": "array",
-            "minItems": 1
-          }
-        }
-      },
-      "forbiddenTopLevel": [
-        "data",
-        "filter"
-      ]
-    },
-    "create_view_filter": {
-      "schema": null,
-      "forbiddenTopLevel": [
-        "data",
-        "filter",
-        "input"
-      ]
-    },
-    "update_view_filter": {
-      "schema": null,
-      "forbiddenTopLevel": [
-        "data",
-        "filter",
-        "input",
-        "update"
-      ]
-    },
-    "create_view_sort": {
-      "schema": null,
-      "forbiddenTopLevel": [
-        "data",
-        "filter",
-        "input"
-      ]
-    },
-    "create_complete_workflow": {
-      "$shape": "Flat: name, description?, trigger, steps, stepPositions?, edges?, activate?",
-      "schema": null,
-      "forbiddenTopLevel": [
-        "data",
-        "filter",
-        "input"
-      ]
-    },
-    "activate_workflow_version": {
-      "schema": {
-        "type": "object",
-        "required": [
-          "workflowVersionId"
-        ],
-        "properties": {
-          "workflowVersionId": {
-            "type": "string"
-          }
-        }
-      },
-      "forbiddenTopLevel": [
-        "data",
-        "filter",
-        "input"
-      ]
-    },
-    "deactivate_workflow_version": {
-      "schema": {
-        "type": "object",
-        "required": [
-          "workflowVersionId"
-        ],
-        "properties": {
-          "workflowVersionId": {
-            "type": "string"
-          }
-        }
-      },
-      "forbiddenTopLevel": [
-        "data",
-        "filter",
-        "input"
-      ]
-    },
-    "create_workflow_version_step": {
-      "schema": null,
-      "forbiddenTopLevel": [
-        "data",
-        "filter",
-        "input"
-      ]
-    },
-    "update_workflow_version_step": {
-      "schema": null,
-      "forbiddenTopLevel": [
-        "data",
-        "filter",
-        "input",
-        "update"
-      ]
-    },
-    "create_workflow_version_edge": {
-      "schema": null,
-      "forbiddenTopLevel": [
-        "data",
-        "filter",
-        "input"
-      ]
-    },
-    "create_draft_from_workflow_version": {
-      "schema": {
-        "type": "object",
-        "required": [
-          "workflowVersionId"
-        ],
-        "properties": {
-          "workflowVersionId": {
-            "type": "string"
-          }
-        }
-      },
       "forbiddenTopLevel": [
         "data",
         "filter",
@@ -9613,7 +9409,7 @@
       ]
     },
     "createNoteTarget": {
-      "$shape": "GraphQL mutation \u2014 variables: { data: { noteId, targetCompanyId?, targetPersonId?, targetOpportunityId? } }",
+      "$shape": "GraphQL mutation — variables: { data: { noteId, targetCompanyId?, targetPersonId?, targetOpportunityId? } }",
       "$comment": "Bypasses the record-crud workflow gate by routing through Twenty's GraphQL createOne resolver. The fixture validates the GraphQL `variables` payload, not an execute_tool arguments payload.",
       "schema": {
         "type": "object",
@@ -9720,11 +9516,28 @@
     "get_object_metadata": {
       "schema": {
         "name": "get_object_metadata",
-        "description": "List all object metadata items in the workspace. Returns nameSingular, namePlural, isCustom, isSystem, and other object metadata.",
+        "description": "Find objects metadata. Retrieve information about the data model objects in the workspace.",
         "inputSchema": {
           "$schema": "https://json-schema.org/draft/2020-12/schema",
           "type": "object",
-          "properties": {},
+          "properties": {
+            "id": {
+              "description": "Unique identifier for the object metadata. If provided, returns a single object.",
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "limit": {
+              "description": "Maximum number of objects to return.",
+              "default": 100,
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100
+            }
+          },
+          "required": [
+            "limit"
+          ],
           "additionalProperties": false
         }
       },

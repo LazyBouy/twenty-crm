@@ -1,6 +1,6 @@
 {
-  "$source": "Captured from http://localhost:4440 on 2026-05-02T18:08:31.737Z",
-  "$count": 252,
+  "$source": "Captured from http://localhost:4440 on 2026-05-12T21:52:37.407Z",
+  "$count": 260,
   "tools": [
     "activate_workflow_version",
     "add_dashboard_tab",
@@ -42,6 +42,7 @@
     "create_many_opportunities",
     "create_many_people",
     "create_many_relation_fields",
+    "create_many_schema_change_audits",
     "create_many_task_targets",
     "create_many_tasks",
     "create_many_timeline_activities",
@@ -61,6 +62,7 @@
     "create_object_metadata",
     "create_opportunity",
     "create_person",
+    "create_schema_change_audit",
     "create_task",
     "create_task_target",
     "create_timeline_activity",
@@ -95,6 +97,7 @@
     "delete_object_metadata",
     "delete_opportunity",
     "delete_person",
+    "delete_schema_change_audit",
     "delete_task",
     "delete_task_target",
     "delete_timeline_activity",
@@ -144,12 +147,14 @@
     "find_one_note_target",
     "find_one_opportunity",
     "find_one_person",
+    "find_one_schema_change_audit",
     "find_one_task",
     "find_one_task_target",
     "find_one_timeline_activity",
     "find_one_workspace_member",
     "find_opportunities",
     "find_people",
+    "find_schema_change_audits",
     "find_task_targets",
     "find_tasks",
     "find_timeline_activities",
@@ -183,6 +188,7 @@
     "group_by_notes",
     "group_by_opportunities",
     "group_by_people",
+    "group_by_schema_change_audits",
     "group_by_task_targets",
     "group_by_tasks",
     "group_by_timeline_activities",
@@ -226,6 +232,7 @@
     "update_many_object_metadata",
     "update_many_opportunities",
     "update_many_people",
+    "update_many_schema_change_audits",
     "update_many_task_targets",
     "update_many_tasks",
     "update_many_timeline_activities",
@@ -243,6 +250,7 @@
     "update_object_metadata",
     "update_opportunity",
     "update_person",
+    "update_schema_change_audit",
     "update_task",
     "update_task_target",
     "update_timeline_activity",
@@ -306,6 +314,38 @@
     ],
     "DATABASE_CRUD": [
       {
+        "name": "find_attachments",
+        "description": "Search for Attachments records using flexible filtering criteria. Supports exact matches, pattern matching, ranges, and null checks. Use limit/offset for pagination and orderBy for sorting. To find by ID, use filter: { id: { eq: \"record-id\" } }. Returns an array of matching records with their full data."
+      },
+      {
+        "name": "find_one_attachment",
+        "description": "Retrieve a single Attachment record by its unique ID. Use this when you know the exact record ID and need the complete record data. Returns the full record or an error if not found."
+      },
+      {
+        "name": "group_by_attachments",
+        "description": "Group Attachments records by one or two fields and compute an aggregate (COUNT, SUM, AVG, MIN, MAX, etc.). Use for questions like \"how many deals per stage?\" or \"total revenue by company\". Returns groups with dimension values and aggregate results, ordered by the aggregate value."
+      },
+      {
+        "name": "create_attachment",
+        "description": "Create a new Attachment record. Provide all required fields and any optional fields you want to set. The system will automatically handle timestamps and IDs. Returns the created record with all its data."
+      },
+      {
+        "name": "create_many_attachments",
+        "description": "Create multiple Attachments records in a single call. Provide an array of records, each containing the required fields. Maximum 20 records per call. Returns the created records."
+      },
+      {
+        "name": "update_attachment",
+        "description": "Update an existing Attachment record. Provide the record ID and only the fields you want to change. Unspecified fields will remain unchanged. Returns the updated record with all current data."
+      },
+      {
+        "name": "update_many_attachments",
+        "description": "Update multiple Attachments records matching a filter in a single operation. All matching records will receive the same field values. WARNING: Use specific filters to avoid unintended mass updates. Always verify the filter scope with a find query first. Returns the updated records."
+      },
+      {
+        "name": "delete_attachment",
+        "description": "Delete a Attachment record by marking it as deleted. The record is hidden from normal queries. This is reversible. Use this to remove records."
+      },
+      {
         "name": "find_blocklists",
         "description": "Search for Blocklists records using flexible filtering criteria. Supports exact matches, pattern matching, ranges, and null checks. Use limit/offset for pagination and orderBy for sorting. To find by ID, use filter: { id: { eq: \"record-id\" } }. Returns an array of matching records with their full data."
       },
@@ -336,166 +376,6 @@
       {
         "name": "delete_blocklist",
         "description": "Delete a Blocklist record by marking it as deleted. The record is hidden from normal queries. This is reversible. Use this to remove records."
-      },
-      {
-        "name": "find_notes",
-        "description": "Search for Notes records using flexible filtering criteria. Supports exact matches, pattern matching, ranges, and null checks. Use limit/offset for pagination and orderBy for sorting. To find by ID, use filter: { id: { eq: \"record-id\" } }. Returns an array of matching records with their full data."
-      },
-      {
-        "name": "find_one_note",
-        "description": "Retrieve a single Note record by its unique ID. Use this when you know the exact record ID and need the complete record data. Returns the full record or an error if not found."
-      },
-      {
-        "name": "group_by_notes",
-        "description": "Group Notes records by one or two fields and compute an aggregate (COUNT, SUM, AVG, MIN, MAX, etc.). Use for questions like \"how many deals per stage?\" or \"total revenue by company\". Returns groups with dimension values and aggregate results, ordered by the aggregate value."
-      },
-      {
-        "name": "create_note",
-        "description": "Create a new Note record. Provide all required fields and any optional fields you want to set. The system will automatically handle timestamps and IDs. Returns the created record with all its data."
-      },
-      {
-        "name": "create_many_notes",
-        "description": "Create multiple Notes records in a single call. Provide an array of records, each containing the required fields. Maximum 20 records per call. Returns the created records."
-      },
-      {
-        "name": "update_note",
-        "description": "Update an existing Note record. Provide the record ID and only the fields you want to change. Unspecified fields will remain unchanged. Returns the updated record with all current data."
-      },
-      {
-        "name": "update_many_notes",
-        "description": "Update multiple Notes records matching a filter in a single operation. All matching records will receive the same field values. WARNING: Use specific filters to avoid unintended mass updates. Always verify the filter scope with a find query first. Returns the updated records."
-      },
-      {
-        "name": "delete_note",
-        "description": "Delete a Note record by marking it as deleted. The record is hidden from normal queries. This is reversible. Use this to remove records."
-      },
-      {
-        "name": "find_tasks",
-        "description": "Search for Tasks records using flexible filtering criteria. Supports exact matches, pattern matching, ranges, and null checks. Use limit/offset for pagination and orderBy for sorting. To find by ID, use filter: { id: { eq: \"record-id\" } }. Returns an array of matching records with their full data."
-      },
-      {
-        "name": "find_one_task",
-        "description": "Retrieve a single Task record by its unique ID. Use this when you know the exact record ID and need the complete record data. Returns the full record or an error if not found."
-      },
-      {
-        "name": "group_by_tasks",
-        "description": "Group Tasks records by one or two fields and compute an aggregate (COUNT, SUM, AVG, MIN, MAX, etc.). Use for questions like \"how many deals per stage?\" or \"total revenue by company\". Returns groups with dimension values and aggregate results, ordered by the aggregate value."
-      },
-      {
-        "name": "create_task",
-        "description": "Create a new Task record. Provide all required fields and any optional fields you want to set. The system will automatically handle timestamps and IDs. Returns the created record with all its data."
-      },
-      {
-        "name": "create_many_tasks",
-        "description": "Create multiple Tasks records in a single call. Provide an array of records, each containing the required fields. Maximum 20 records per call. Returns the created records."
-      },
-      {
-        "name": "update_task",
-        "description": "Update an existing Task record. Provide the record ID and only the fields you want to change. Unspecified fields will remain unchanged. Returns the updated record with all current data."
-      },
-      {
-        "name": "update_many_tasks",
-        "description": "Update multiple Tasks records matching a filter in a single operation. All matching records will receive the same field values. WARNING: Use specific filters to avoid unintended mass updates. Always verify the filter scope with a find query first. Returns the updated records."
-      },
-      {
-        "name": "delete_task",
-        "description": "Delete a Task record by marking it as deleted. The record is hidden from normal queries. This is reversible. Use this to remove records."
-      },
-      {
-        "name": "find_workspace_members",
-        "description": "Search for Workspace Members records using flexible filtering criteria. Supports exact matches, pattern matching, ranges, and null checks. Use limit/offset for pagination and orderBy for sorting. To find by ID, use filter: { id: { eq: \"record-id\" } }. Returns an array of matching records with their full data."
-      },
-      {
-        "name": "find_one_workspace_member",
-        "description": "Retrieve a single Workspace Member record by its unique ID. Use this when you know the exact record ID and need the complete record data. Returns the full record or an error if not found."
-      },
-      {
-        "name": "group_by_workspace_members",
-        "description": "Group Workspace Members records by one or two fields and compute an aggregate (COUNT, SUM, AVG, MIN, MAX, etc.). Use for questions like \"how many deals per stage?\" or \"total revenue by company\". Returns groups with dimension values and aggregate results, ordered by the aggregate value."
-      },
-      {
-        "name": "create_workspace_member",
-        "description": "Create a new Workspace Member record. Provide all required fields and any optional fields you want to set. The system will automatically handle timestamps and IDs. Returns the created record with all its data."
-      },
-      {
-        "name": "create_many_workspace_members",
-        "description": "Create multiple Workspace Members records in a single call. Provide an array of records, each containing the required fields. Maximum 20 records per call. Returns the created records."
-      },
-      {
-        "name": "update_workspace_member",
-        "description": "Update an existing Workspace Member record. Provide the record ID and only the fields you want to change. Unspecified fields will remain unchanged. Returns the updated record with all current data."
-      },
-      {
-        "name": "update_many_workspace_members",
-        "description": "Update multiple Workspace Members records matching a filter in a single operation. All matching records will receive the same field values. WARNING: Use specific filters to avoid unintended mass updates. Always verify the filter scope with a find query first. Returns the updated records."
-      },
-      {
-        "name": "delete_workspace_member",
-        "description": "Delete a Workspace Member record by marking it as deleted. The record is hidden from normal queries. This is reversible. Use this to remove records."
-      },
-      {
-        "name": "find_dashboards",
-        "description": "Search for Dashboards records using flexible filtering criteria. Supports exact matches, pattern matching, ranges, and null checks. Use limit/offset for pagination and orderBy for sorting. To find by ID, use filter: { id: { eq: \"record-id\" } }. Returns an array of matching records with their full data."
-      },
-      {
-        "name": "find_one_dashboard",
-        "description": "Retrieve a single Dashboard record by its unique ID. Use this when you know the exact record ID and need the complete record data. Returns the full record or an error if not found."
-      },
-      {
-        "name": "group_by_dashboards",
-        "description": "Group Dashboards records by one or two fields and compute an aggregate (COUNT, SUM, AVG, MIN, MAX, etc.). Use for questions like \"how many deals per stage?\" or \"total revenue by company\". Returns groups with dimension values and aggregate results, ordered by the aggregate value."
-      },
-      {
-        "name": "create_dashboard",
-        "description": "Create a new Dashboard record. Provide all required fields and any optional fields you want to set. The system will automatically handle timestamps and IDs. Returns the created record with all its data."
-      },
-      {
-        "name": "create_many_dashboards",
-        "description": "Create multiple Dashboards records in a single call. Provide an array of records, each containing the required fields. Maximum 20 records per call. Returns the created records."
-      },
-      {
-        "name": "update_dashboard",
-        "description": "Update an existing Dashboard record. Provide the record ID and only the fields you want to change. Unspecified fields will remain unchanged. Returns the updated record with all current data."
-      },
-      {
-        "name": "update_many_dashboards",
-        "description": "Update multiple Dashboards records matching a filter in a single operation. All matching records will receive the same field values. WARNING: Use specific filters to avoid unintended mass updates. Always verify the filter scope with a find query first. Returns the updated records."
-      },
-      {
-        "name": "delete_dashboard",
-        "description": "Delete a Dashboard record by marking it as deleted. The record is hidden from normal queries. This is reversible. Use this to remove records."
-      },
-      {
-        "name": "find_messages",
-        "description": "Search for Messages records using flexible filtering criteria. Supports exact matches, pattern matching, ranges, and null checks. Use limit/offset for pagination and orderBy for sorting. To find by ID, use filter: { id: { eq: \"record-id\" } }. Returns an array of matching records with their full data."
-      },
-      {
-        "name": "find_one_message",
-        "description": "Retrieve a single Message record by its unique ID. Use this when you know the exact record ID and need the complete record data. Returns the full record or an error if not found."
-      },
-      {
-        "name": "group_by_messages",
-        "description": "Group Messages records by one or two fields and compute an aggregate (COUNT, SUM, AVG, MIN, MAX, etc.). Use for questions like \"how many deals per stage?\" or \"total revenue by company\". Returns groups with dimension values and aggregate results, ordered by the aggregate value."
-      },
-      {
-        "name": "create_message",
-        "description": "Create a new Message record. Provide all required fields and any optional fields you want to set. The system will automatically handle timestamps and IDs. Returns the created record with all its data."
-      },
-      {
-        "name": "create_many_messages",
-        "description": "Create multiple Messages records in a single call. Provide an array of records, each containing the required fields. Maximum 20 records per call. Returns the created records."
-      },
-      {
-        "name": "update_message",
-        "description": "Update an existing Message record. Provide the record ID and only the fields you want to change. Unspecified fields will remain unchanged. Returns the updated record with all current data."
-      },
-      {
-        "name": "update_many_messages",
-        "description": "Update multiple Messages records matching a filter in a single operation. All matching records will receive the same field values. WARNING: Use specific filters to avoid unintended mass updates. Always verify the filter scope with a find query first. Returns the updated records."
-      },
-      {
-        "name": "delete_message",
-        "description": "Delete a Message record by marking it as deleted. The record is hidden from normal queries. This is reversible. Use this to remove records."
       },
       {
         "name": "find_calendar_channel_event_associations",
@@ -530,6 +410,262 @@
         "description": "Delete a Calendar Channel Event Association record by marking it as deleted. The record is hidden from normal queries. This is reversible. Use this to remove records."
       },
       {
+        "name": "find_calendar_channels",
+        "description": "Search for Calendar Channels records using flexible filtering criteria. Supports exact matches, pattern matching, ranges, and null checks. Use limit/offset for pagination and orderBy for sorting. To find by ID, use filter: { id: { eq: \"record-id\" } }. Returns an array of matching records with their full data."
+      },
+      {
+        "name": "find_one_calendar_channel",
+        "description": "Retrieve a single Calendar Channel record by its unique ID. Use this when you know the exact record ID and need the complete record data. Returns the full record or an error if not found."
+      },
+      {
+        "name": "group_by_calendar_channels",
+        "description": "Group Calendar Channels records by one or two fields and compute an aggregate (COUNT, SUM, AVG, MIN, MAX, etc.). Use for questions like \"how many deals per stage?\" or \"total revenue by company\". Returns groups with dimension values and aggregate results, ordered by the aggregate value."
+      },
+      {
+        "name": "create_calendar_channel",
+        "description": "Create a new Calendar Channel record. Provide all required fields and any optional fields you want to set. The system will automatically handle timestamps and IDs. Returns the created record with all its data."
+      },
+      {
+        "name": "create_many_calendar_channels",
+        "description": "Create multiple Calendar Channels records in a single call. Provide an array of records, each containing the required fields. Maximum 20 records per call. Returns the created records."
+      },
+      {
+        "name": "update_calendar_channel",
+        "description": "Update an existing Calendar Channel record. Provide the record ID and only the fields you want to change. Unspecified fields will remain unchanged. Returns the updated record with all current data."
+      },
+      {
+        "name": "update_many_calendar_channels",
+        "description": "Update multiple Calendar Channels records matching a filter in a single operation. All matching records will receive the same field values. WARNING: Use specific filters to avoid unintended mass updates. Always verify the filter scope with a find query first. Returns the updated records."
+      },
+      {
+        "name": "delete_calendar_channel",
+        "description": "Delete a Calendar Channel record by marking it as deleted. The record is hidden from normal queries. This is reversible. Use this to remove records."
+      },
+      {
+        "name": "find_calendar_event_participants",
+        "description": "Search for Calendar event participants records using flexible filtering criteria. Supports exact matches, pattern matching, ranges, and null checks. Use limit/offset for pagination and orderBy for sorting. To find by ID, use filter: { id: { eq: \"record-id\" } }. Returns an array of matching records with their full data."
+      },
+      {
+        "name": "find_one_calendar_event_participant",
+        "description": "Retrieve a single Calendar event participant record by its unique ID. Use this when you know the exact record ID and need the complete record data. Returns the full record or an error if not found."
+      },
+      {
+        "name": "group_by_calendar_event_participants",
+        "description": "Group Calendar event participants records by one or two fields and compute an aggregate (COUNT, SUM, AVG, MIN, MAX, etc.). Use for questions like \"how many deals per stage?\" or \"total revenue by company\". Returns groups with dimension values and aggregate results, ordered by the aggregate value."
+      },
+      {
+        "name": "create_calendar_event_participant",
+        "description": "Create a new Calendar event participant record. Provide all required fields and any optional fields you want to set. The system will automatically handle timestamps and IDs. Returns the created record with all its data."
+      },
+      {
+        "name": "create_many_calendar_event_participants",
+        "description": "Create multiple Calendar event participants records in a single call. Provide an array of records, each containing the required fields. Maximum 20 records per call. Returns the created records."
+      },
+      {
+        "name": "update_calendar_event_participant",
+        "description": "Update an existing Calendar event participant record. Provide the record ID and only the fields you want to change. Unspecified fields will remain unchanged. Returns the updated record with all current data."
+      },
+      {
+        "name": "update_many_calendar_event_participants",
+        "description": "Update multiple Calendar event participants records matching a filter in a single operation. All matching records will receive the same field values. WARNING: Use specific filters to avoid unintended mass updates. Always verify the filter scope with a find query first. Returns the updated records."
+      },
+      {
+        "name": "delete_calendar_event_participant",
+        "description": "Delete a Calendar event participant record by marking it as deleted. The record is hidden from normal queries. This is reversible. Use this to remove records."
+      },
+      {
+        "name": "find_calendar_events",
+        "description": "Search for Calendar events records using flexible filtering criteria. Supports exact matches, pattern matching, ranges, and null checks. Use limit/offset for pagination and orderBy for sorting. To find by ID, use filter: { id: { eq: \"record-id\" } }. Returns an array of matching records with their full data."
+      },
+      {
+        "name": "find_one_calendar_event",
+        "description": "Retrieve a single Calendar event record by its unique ID. Use this when you know the exact record ID and need the complete record data. Returns the full record or an error if not found."
+      },
+      {
+        "name": "group_by_calendar_events",
+        "description": "Group Calendar events records by one or two fields and compute an aggregate (COUNT, SUM, AVG, MIN, MAX, etc.). Use for questions like \"how many deals per stage?\" or \"total revenue by company\". Returns groups with dimension values and aggregate results, ordered by the aggregate value."
+      },
+      {
+        "name": "create_calendar_event",
+        "description": "Create a new Calendar event record. Provide all required fields and any optional fields you want to set. The system will automatically handle timestamps and IDs. Returns the created record with all its data."
+      },
+      {
+        "name": "create_many_calendar_events",
+        "description": "Create multiple Calendar events records in a single call. Provide an array of records, each containing the required fields. Maximum 20 records per call. Returns the created records."
+      },
+      {
+        "name": "update_calendar_event",
+        "description": "Update an existing Calendar event record. Provide the record ID and only the fields you want to change. Unspecified fields will remain unchanged. Returns the updated record with all current data."
+      },
+      {
+        "name": "update_many_calendar_events",
+        "description": "Update multiple Calendar events records matching a filter in a single operation. All matching records will receive the same field values. WARNING: Use specific filters to avoid unintended mass updates. Always verify the filter scope with a find query first. Returns the updated records."
+      },
+      {
+        "name": "delete_calendar_event",
+        "description": "Delete a Calendar event record by marking it as deleted. The record is hidden from normal queries. This is reversible. Use this to remove records."
+      },
+      {
+        "name": "find_companies",
+        "description": "Search for Companies records using flexible filtering criteria. Supports exact matches, pattern matching, ranges, and null checks. Use limit/offset for pagination and orderBy for sorting. To find by ID, use filter: { id: { eq: \"record-id\" } }. Returns an array of matching records with their full data."
+      },
+      {
+        "name": "find_one_company",
+        "description": "Retrieve a single Company record by its unique ID. Use this when you know the exact record ID and need the complete record data. Returns the full record or an error if not found."
+      },
+      {
+        "name": "group_by_companies",
+        "description": "Group Companies records by one or two fields and compute an aggregate (COUNT, SUM, AVG, MIN, MAX, etc.). Use for questions like \"how many deals per stage?\" or \"total revenue by company\". Returns groups with dimension values and aggregate results, ordered by the aggregate value."
+      },
+      {
+        "name": "create_company",
+        "description": "Create a new Company record. Provide all required fields and any optional fields you want to set. The system will automatically handle timestamps and IDs. Returns the created record with all its data."
+      },
+      {
+        "name": "create_many_companies",
+        "description": "Create multiple Companies records in a single call. Provide an array of records, each containing the required fields. Maximum 20 records per call. Returns the created records."
+      },
+      {
+        "name": "update_company",
+        "description": "Update an existing Company record. Provide the record ID and only the fields you want to change. Unspecified fields will remain unchanged. Returns the updated record with all current data."
+      },
+      {
+        "name": "update_many_companies",
+        "description": "Update multiple Companies records matching a filter in a single operation. All matching records will receive the same field values. WARNING: Use specific filters to avoid unintended mass updates. Always verify the filter scope with a find query first. Returns the updated records."
+      },
+      {
+        "name": "delete_company",
+        "description": "Delete a Company record by marking it as deleted. The record is hidden from normal queries. This is reversible. Use this to remove records."
+      },
+      {
+        "name": "find_connected_accounts",
+        "description": "Search for Connected Accounts records using flexible filtering criteria. Supports exact matches, pattern matching, ranges, and null checks. Use limit/offset for pagination and orderBy for sorting. To find by ID, use filter: { id: { eq: \"record-id\" } }. Returns an array of matching records with their full data."
+      },
+      {
+        "name": "find_one_connected_account",
+        "description": "Retrieve a single Connected Account record by its unique ID. Use this when you know the exact record ID and need the complete record data. Returns the full record or an error if not found."
+      },
+      {
+        "name": "group_by_connected_accounts",
+        "description": "Group Connected Accounts records by one or two fields and compute an aggregate (COUNT, SUM, AVG, MIN, MAX, etc.). Use for questions like \"how many deals per stage?\" or \"total revenue by company\". Returns groups with dimension values and aggregate results, ordered by the aggregate value."
+      },
+      {
+        "name": "create_connected_account",
+        "description": "Create a new Connected Account record. Provide all required fields and any optional fields you want to set. The system will automatically handle timestamps and IDs. Returns the created record with all its data."
+      },
+      {
+        "name": "create_many_connected_accounts",
+        "description": "Create multiple Connected Accounts records in a single call. Provide an array of records, each containing the required fields. Maximum 20 records per call. Returns the created records."
+      },
+      {
+        "name": "update_connected_account",
+        "description": "Update an existing Connected Account record. Provide the record ID and only the fields you want to change. Unspecified fields will remain unchanged. Returns the updated record with all current data."
+      },
+      {
+        "name": "update_many_connected_accounts",
+        "description": "Update multiple Connected Accounts records matching a filter in a single operation. All matching records will receive the same field values. WARNING: Use specific filters to avoid unintended mass updates. Always verify the filter scope with a find query first. Returns the updated records."
+      },
+      {
+        "name": "delete_connected_account",
+        "description": "Delete a Connected Account record by marking it as deleted. The record is hidden from normal queries. This is reversible. Use this to remove records."
+      },
+      {
+        "name": "find_dashboards",
+        "description": "Search for Dashboards records using flexible filtering criteria. Supports exact matches, pattern matching, ranges, and null checks. Use limit/offset for pagination and orderBy for sorting. To find by ID, use filter: { id: { eq: \"record-id\" } }. Returns an array of matching records with their full data."
+      },
+      {
+        "name": "find_one_dashboard",
+        "description": "Retrieve a single Dashboard record by its unique ID. Use this when you know the exact record ID and need the complete record data. Returns the full record or an error if not found."
+      },
+      {
+        "name": "group_by_dashboards",
+        "description": "Group Dashboards records by one or two fields and compute an aggregate (COUNT, SUM, AVG, MIN, MAX, etc.). Use for questions like \"how many deals per stage?\" or \"total revenue by company\". Returns groups with dimension values and aggregate results, ordered by the aggregate value."
+      },
+      {
+        "name": "create_dashboard",
+        "description": "Create a new Dashboard record. Provide all required fields and any optional fields you want to set. The system will automatically handle timestamps and IDs. Returns the created record with all its data."
+      },
+      {
+        "name": "create_many_dashboards",
+        "description": "Create multiple Dashboards records in a single call. Provide an array of records, each containing the required fields. Maximum 20 records per call. Returns the created records."
+      },
+      {
+        "name": "update_dashboard",
+        "description": "Update an existing Dashboard record. Provide the record ID and only the fields you want to change. Unspecified fields will remain unchanged. Returns the updated record with all current data."
+      },
+      {
+        "name": "update_many_dashboards",
+        "description": "Update multiple Dashboards records matching a filter in a single operation. All matching records will receive the same field values. WARNING: Use specific filters to avoid unintended mass updates. Always verify the filter scope with a find query first. Returns the updated records."
+      },
+      {
+        "name": "delete_dashboard",
+        "description": "Delete a Dashboard record by marking it as deleted. The record is hidden from normal queries. This is reversible. Use this to remove records."
+      },
+      {
+        "name": "find_message_channel_message_associations",
+        "description": "Search for Message Channel Message Associations records using flexible filtering criteria. Supports exact matches, pattern matching, ranges, and null checks. Use limit/offset for pagination and orderBy for sorting. To find by ID, use filter: { id: { eq: \"record-id\" } }. Returns an array of matching records with their full data."
+      },
+      {
+        "name": "find_one_message_channel_message_association",
+        "description": "Retrieve a single Message Channel Message Association record by its unique ID. Use this when you know the exact record ID and need the complete record data. Returns the full record or an error if not found."
+      },
+      {
+        "name": "group_by_message_channel_message_associations",
+        "description": "Group Message Channel Message Associations records by one or two fields and compute an aggregate (COUNT, SUM, AVG, MIN, MAX, etc.). Use for questions like \"how many deals per stage?\" or \"total revenue by company\". Returns groups with dimension values and aggregate results, ordered by the aggregate value."
+      },
+      {
+        "name": "create_message_channel_message_association",
+        "description": "Create a new Message Channel Message Association record. Provide all required fields and any optional fields you want to set. The system will automatically handle timestamps and IDs. Returns the created record with all its data."
+      },
+      {
+        "name": "create_many_message_channel_message_associations",
+        "description": "Create multiple Message Channel Message Associations records in a single call. Provide an array of records, each containing the required fields. Maximum 20 records per call. Returns the created records."
+      },
+      {
+        "name": "update_message_channel_message_association",
+        "description": "Update an existing Message Channel Message Association record. Provide the record ID and only the fields you want to change. Unspecified fields will remain unchanged. Returns the updated record with all current data."
+      },
+      {
+        "name": "update_many_message_channel_message_associations",
+        "description": "Update multiple Message Channel Message Associations records matching a filter in a single operation. All matching records will receive the same field values. WARNING: Use specific filters to avoid unintended mass updates. Always verify the filter scope with a find query first. Returns the updated records."
+      },
+      {
+        "name": "delete_message_channel_message_association",
+        "description": "Delete a Message Channel Message Association record by marking it as deleted. The record is hidden from normal queries. This is reversible. Use this to remove records."
+      },
+      {
+        "name": "find_message_channels",
+        "description": "Search for Message Channels records using flexible filtering criteria. Supports exact matches, pattern matching, ranges, and null checks. Use limit/offset for pagination and orderBy for sorting. To find by ID, use filter: { id: { eq: \"record-id\" } }. Returns an array of matching records with their full data."
+      },
+      {
+        "name": "find_one_message_channel",
+        "description": "Retrieve a single Message Channel record by its unique ID. Use this when you know the exact record ID and need the complete record data. Returns the full record or an error if not found."
+      },
+      {
+        "name": "group_by_message_channels",
+        "description": "Group Message Channels records by one or two fields and compute an aggregate (COUNT, SUM, AVG, MIN, MAX, etc.). Use for questions like \"how many deals per stage?\" or \"total revenue by company\". Returns groups with dimension values and aggregate results, ordered by the aggregate value."
+      },
+      {
+        "name": "create_message_channel",
+        "description": "Create a new Message Channel record. Provide all required fields and any optional fields you want to set. The system will automatically handle timestamps and IDs. Returns the created record with all its data."
+      },
+      {
+        "name": "create_many_message_channels",
+        "description": "Create multiple Message Channels records in a single call. Provide an array of records, each containing the required fields. Maximum 20 records per call. Returns the created records."
+      },
+      {
+        "name": "update_message_channel",
+        "description": "Update an existing Message Channel record. Provide the record ID and only the fields you want to change. Unspecified fields will remain unchanged. Returns the updated record with all current data."
+      },
+      {
+        "name": "update_many_message_channels",
+        "description": "Update multiple Message Channels records matching a filter in a single operation. All matching records will receive the same field values. WARNING: Use specific filters to avoid unintended mass updates. Always verify the filter scope with a find query first. Returns the updated records."
+      },
+      {
+        "name": "delete_message_channel",
+        "description": "Delete a Message Channel record by marking it as deleted. The record is hidden from normal queries. This is reversible. Use this to remove records."
+      },
+      {
         "name": "find_message_folders",
         "description": "Search for Message Folders records using flexible filtering criteria. Supports exact matches, pattern matching, ranges, and null checks. Use limit/offset for pagination and orderBy for sorting. To find by ID, use filter: { id: { eq: \"record-id\" } }. Returns an array of matching records with their full data."
       },
@@ -560,6 +696,294 @@
       {
         "name": "delete_message_folder",
         "description": "Delete a Message Folder record by marking it as deleted. The record is hidden from normal queries. This is reversible. Use this to remove records."
+      },
+      {
+        "name": "find_message_channel_message_association_message_folders",
+        "description": "Search for Message Channel Message Association Message Folders records using flexible filtering criteria. Supports exact matches, pattern matching, ranges, and null checks. Use limit/offset for pagination and orderBy for sorting. To find by ID, use filter: { id: { eq: \"record-id\" } }. Returns an array of matching records with their full data."
+      },
+      {
+        "name": "find_one_message_channel_message_association_message_folder",
+        "description": "Retrieve a single Message Channel Message Association Message Folder record by its unique ID. Use this when you know the exact record ID and need the complete record data. Returns the full record or an error if not found."
+      },
+      {
+        "name": "group_by_message_channel_message_association_message_folders",
+        "description": "Group Message Channel Message Association Message Folders records by one or two fields and compute an aggregate (COUNT, SUM, AVG, MIN, MAX, etc.). Use for questions like \"how many deals per stage?\" or \"total revenue by company\". Returns groups with dimension values and aggregate results, ordered by the aggregate value."
+      },
+      {
+        "name": "create_message_channel_message_association_message_folder",
+        "description": "Create a new Message Channel Message Association Message Folder record. Provide all required fields and any optional fields you want to set. The system will automatically handle timestamps and IDs. Returns the created record with all its data."
+      },
+      {
+        "name": "create_many_message_channel_message_association_message_folders",
+        "description": "Create multiple Message Channel Message Association Message Folders records in a single call. Provide an array of records, each containing the required fields. Maximum 20 records per call. Returns the created records."
+      },
+      {
+        "name": "update_message_channel_message_association_message_folder",
+        "description": "Update an existing Message Channel Message Association Message Folder record. Provide the record ID and only the fields you want to change. Unspecified fields will remain unchanged. Returns the updated record with all current data."
+      },
+      {
+        "name": "update_many_message_channel_message_association_message_folders",
+        "description": "Update multiple Message Channel Message Association Message Folders records matching a filter in a single operation. All matching records will receive the same field values. WARNING: Use specific filters to avoid unintended mass updates. Always verify the filter scope with a find query first. Returns the updated records."
+      },
+      {
+        "name": "delete_message_channel_message_association_message_folder",
+        "description": "Delete a Message Channel Message Association Message Folder record by marking it as deleted. The record is hidden from normal queries. This is reversible. Use this to remove records."
+      },
+      {
+        "name": "find_message_participants",
+        "description": "Search for Message Participants records using flexible filtering criteria. Supports exact matches, pattern matching, ranges, and null checks. Use limit/offset for pagination and orderBy for sorting. To find by ID, use filter: { id: { eq: \"record-id\" } }. Returns an array of matching records with their full data."
+      },
+      {
+        "name": "find_one_message_participant",
+        "description": "Retrieve a single Message Participant record by its unique ID. Use this when you know the exact record ID and need the complete record data. Returns the full record or an error if not found."
+      },
+      {
+        "name": "group_by_message_participants",
+        "description": "Group Message Participants records by one or two fields and compute an aggregate (COUNT, SUM, AVG, MIN, MAX, etc.). Use for questions like \"how many deals per stage?\" or \"total revenue by company\". Returns groups with dimension values and aggregate results, ordered by the aggregate value."
+      },
+      {
+        "name": "create_message_participant",
+        "description": "Create a new Message Participant record. Provide all required fields and any optional fields you want to set. The system will automatically handle timestamps and IDs. Returns the created record with all its data."
+      },
+      {
+        "name": "create_many_message_participants",
+        "description": "Create multiple Message Participants records in a single call. Provide an array of records, each containing the required fields. Maximum 20 records per call. Returns the created records."
+      },
+      {
+        "name": "update_message_participant",
+        "description": "Update an existing Message Participant record. Provide the record ID and only the fields you want to change. Unspecified fields will remain unchanged. Returns the updated record with all current data."
+      },
+      {
+        "name": "update_many_message_participants",
+        "description": "Update multiple Message Participants records matching a filter in a single operation. All matching records will receive the same field values. WARNING: Use specific filters to avoid unintended mass updates. Always verify the filter scope with a find query first. Returns the updated records."
+      },
+      {
+        "name": "delete_message_participant",
+        "description": "Delete a Message Participant record by marking it as deleted. The record is hidden from normal queries. This is reversible. Use this to remove records."
+      },
+      {
+        "name": "find_message_threads",
+        "description": "Search for Message Threads records using flexible filtering criteria. Supports exact matches, pattern matching, ranges, and null checks. Use limit/offset for pagination and orderBy for sorting. To find by ID, use filter: { id: { eq: \"record-id\" } }. Returns an array of matching records with their full data."
+      },
+      {
+        "name": "find_one_message_thread",
+        "description": "Retrieve a single Message Thread record by its unique ID. Use this when you know the exact record ID and need the complete record data. Returns the full record or an error if not found."
+      },
+      {
+        "name": "group_by_message_threads",
+        "description": "Group Message Threads records by one or two fields and compute an aggregate (COUNT, SUM, AVG, MIN, MAX, etc.). Use for questions like \"how many deals per stage?\" or \"total revenue by company\". Returns groups with dimension values and aggregate results, ordered by the aggregate value."
+      },
+      {
+        "name": "create_message_thread",
+        "description": "Create a new Message Thread record. Provide all required fields and any optional fields you want to set. The system will automatically handle timestamps and IDs. Returns the created record with all its data."
+      },
+      {
+        "name": "create_many_message_threads",
+        "description": "Create multiple Message Threads records in a single call. Provide an array of records, each containing the required fields. Maximum 20 records per call. Returns the created records."
+      },
+      {
+        "name": "update_message_thread",
+        "description": "Update an existing Message Thread record. Provide the record ID and only the fields you want to change. Unspecified fields will remain unchanged. Returns the updated record with all current data."
+      },
+      {
+        "name": "update_many_message_threads",
+        "description": "Update multiple Message Threads records matching a filter in a single operation. All matching records will receive the same field values. WARNING: Use specific filters to avoid unintended mass updates. Always verify the filter scope with a find query first. Returns the updated records."
+      },
+      {
+        "name": "delete_message_thread",
+        "description": "Delete a Message Thread record by marking it as deleted. The record is hidden from normal queries. This is reversible. Use this to remove records."
+      },
+      {
+        "name": "find_messages",
+        "description": "Search for Messages records using flexible filtering criteria. Supports exact matches, pattern matching, ranges, and null checks. Use limit/offset for pagination and orderBy for sorting. To find by ID, use filter: { id: { eq: \"record-id\" } }. Returns an array of matching records with their full data."
+      },
+      {
+        "name": "find_one_message",
+        "description": "Retrieve a single Message record by its unique ID. Use this when you know the exact record ID and need the complete record data. Returns the full record or an error if not found."
+      },
+      {
+        "name": "group_by_messages",
+        "description": "Group Messages records by one or two fields and compute an aggregate (COUNT, SUM, AVG, MIN, MAX, etc.). Use for questions like \"how many deals per stage?\" or \"total revenue by company\". Returns groups with dimension values and aggregate results, ordered by the aggregate value."
+      },
+      {
+        "name": "create_message",
+        "description": "Create a new Message record. Provide all required fields and any optional fields you want to set. The system will automatically handle timestamps and IDs. Returns the created record with all its data."
+      },
+      {
+        "name": "create_many_messages",
+        "description": "Create multiple Messages records in a single call. Provide an array of records, each containing the required fields. Maximum 20 records per call. Returns the created records."
+      },
+      {
+        "name": "update_message",
+        "description": "Update an existing Message record. Provide the record ID and only the fields you want to change. Unspecified fields will remain unchanged. Returns the updated record with all current data."
+      },
+      {
+        "name": "update_many_messages",
+        "description": "Update multiple Messages records matching a filter in a single operation. All matching records will receive the same field values. WARNING: Use specific filters to avoid unintended mass updates. Always verify the filter scope with a find query first. Returns the updated records."
+      },
+      {
+        "name": "delete_message",
+        "description": "Delete a Message record by marking it as deleted. The record is hidden from normal queries. This is reversible. Use this to remove records."
+      },
+      {
+        "name": "find_notes",
+        "description": "Search for Notes records using flexible filtering criteria. Supports exact matches, pattern matching, ranges, and null checks. Use limit/offset for pagination and orderBy for sorting. To find by ID, use filter: { id: { eq: \"record-id\" } }. Returns an array of matching records with their full data."
+      },
+      {
+        "name": "find_one_note",
+        "description": "Retrieve a single Note record by its unique ID. Use this when you know the exact record ID and need the complete record data. Returns the full record or an error if not found."
+      },
+      {
+        "name": "group_by_notes",
+        "description": "Group Notes records by one or two fields and compute an aggregate (COUNT, SUM, AVG, MIN, MAX, etc.). Use for questions like \"how many deals per stage?\" or \"total revenue by company\". Returns groups with dimension values and aggregate results, ordered by the aggregate value."
+      },
+      {
+        "name": "create_note",
+        "description": "Create a new Note record. Provide all required fields and any optional fields you want to set. The system will automatically handle timestamps and IDs. Returns the created record with all its data."
+      },
+      {
+        "name": "create_many_notes",
+        "description": "Create multiple Notes records in a single call. Provide an array of records, each containing the required fields. Maximum 20 records per call. Returns the created records."
+      },
+      {
+        "name": "update_note",
+        "description": "Update an existing Note record. Provide the record ID and only the fields you want to change. Unspecified fields will remain unchanged. Returns the updated record with all current data."
+      },
+      {
+        "name": "update_many_notes",
+        "description": "Update multiple Notes records matching a filter in a single operation. All matching records will receive the same field values. WARNING: Use specific filters to avoid unintended mass updates. Always verify the filter scope with a find query first. Returns the updated records."
+      },
+      {
+        "name": "delete_note",
+        "description": "Delete a Note record by marking it as deleted. The record is hidden from normal queries. This is reversible. Use this to remove records."
+      },
+      {
+        "name": "find_note_targets",
+        "description": "Search for Note Targets records using flexible filtering criteria. Supports exact matches, pattern matching, ranges, and null checks. Use limit/offset for pagination and orderBy for sorting. To find by ID, use filter: { id: { eq: \"record-id\" } }. Returns an array of matching records with their full data."
+      },
+      {
+        "name": "find_one_note_target",
+        "description": "Retrieve a single Note Target record by its unique ID. Use this when you know the exact record ID and need the complete record data. Returns the full record or an error if not found."
+      },
+      {
+        "name": "group_by_note_targets",
+        "description": "Group Note Targets records by one or two fields and compute an aggregate (COUNT, SUM, AVG, MIN, MAX, etc.). Use for questions like \"how many deals per stage?\" or \"total revenue by company\". Returns groups with dimension values and aggregate results, ordered by the aggregate value."
+      },
+      {
+        "name": "create_note_target",
+        "description": "Create a new Note Target record. Provide all required fields and any optional fields you want to set. The system will automatically handle timestamps and IDs. Returns the created record with all its data."
+      },
+      {
+        "name": "create_many_note_targets",
+        "description": "Create multiple Note Targets records in a single call. Provide an array of records, each containing the required fields. Maximum 20 records per call. Returns the created records."
+      },
+      {
+        "name": "update_note_target",
+        "description": "Update an existing Note Target record. Provide the record ID and only the fields you want to change. Unspecified fields will remain unchanged. Returns the updated record with all current data."
+      },
+      {
+        "name": "update_many_note_targets",
+        "description": "Update multiple Note Targets records matching a filter in a single operation. All matching records will receive the same field values. WARNING: Use specific filters to avoid unintended mass updates. Always verify the filter scope with a find query first. Returns the updated records."
+      },
+      {
+        "name": "delete_note_target",
+        "description": "Delete a Note Target record by marking it as deleted. The record is hidden from normal queries. This is reversible. Use this to remove records."
+      },
+      {
+        "name": "find_opportunities",
+        "description": "Search for Opportunities records using flexible filtering criteria. Supports exact matches, pattern matching, ranges, and null checks. Use limit/offset for pagination and orderBy for sorting. To find by ID, use filter: { id: { eq: \"record-id\" } }. Returns an array of matching records with their full data."
+      },
+      {
+        "name": "find_one_opportunity",
+        "description": "Retrieve a single Opportunity record by its unique ID. Use this when you know the exact record ID and need the complete record data. Returns the full record or an error if not found."
+      },
+      {
+        "name": "group_by_opportunities",
+        "description": "Group Opportunities records by one or two fields and compute an aggregate (COUNT, SUM, AVG, MIN, MAX, etc.). Use for questions like \"how many deals per stage?\" or \"total revenue by company\". Returns groups with dimension values and aggregate results, ordered by the aggregate value."
+      },
+      {
+        "name": "create_opportunity",
+        "description": "Create a new Opportunity record. Provide all required fields and any optional fields you want to set. The system will automatically handle timestamps and IDs. Returns the created record with all its data."
+      },
+      {
+        "name": "create_many_opportunities",
+        "description": "Create multiple Opportunities records in a single call. Provide an array of records, each containing the required fields. Maximum 20 records per call. Returns the created records."
+      },
+      {
+        "name": "update_opportunity",
+        "description": "Update an existing Opportunity record. Provide the record ID and only the fields you want to change. Unspecified fields will remain unchanged. Returns the updated record with all current data."
+      },
+      {
+        "name": "update_many_opportunities",
+        "description": "Update multiple Opportunities records matching a filter in a single operation. All matching records will receive the same field values. WARNING: Use specific filters to avoid unintended mass updates. Always verify the filter scope with a find query first. Returns the updated records."
+      },
+      {
+        "name": "delete_opportunity",
+        "description": "Delete a Opportunity record by marking it as deleted. The record is hidden from normal queries. This is reversible. Use this to remove records."
+      },
+      {
+        "name": "find_people",
+        "description": "Search for People records using flexible filtering criteria. Supports exact matches, pattern matching, ranges, and null checks. Use limit/offset for pagination and orderBy for sorting. To find by ID, use filter: { id: { eq: \"record-id\" } }. Returns an array of matching records with their full data."
+      },
+      {
+        "name": "find_one_person",
+        "description": "Retrieve a single Person record by its unique ID. Use this when you know the exact record ID and need the complete record data. Returns the full record or an error if not found."
+      },
+      {
+        "name": "group_by_people",
+        "description": "Group People records by one or two fields and compute an aggregate (COUNT, SUM, AVG, MIN, MAX, etc.). Use for questions like \"how many deals per stage?\" or \"total revenue by company\". Returns groups with dimension values and aggregate results, ordered by the aggregate value."
+      },
+      {
+        "name": "create_person",
+        "description": "Create a new Person record. Provide all required fields and any optional fields you want to set. The system will automatically handle timestamps and IDs. Returns the created record with all its data."
+      },
+      {
+        "name": "create_many_people",
+        "description": "Create multiple People records in a single call. Provide an array of records, each containing the required fields. Maximum 20 records per call. Returns the created records."
+      },
+      {
+        "name": "update_person",
+        "description": "Update an existing Person record. Provide the record ID and only the fields you want to change. Unspecified fields will remain unchanged. Returns the updated record with all current data."
+      },
+      {
+        "name": "update_many_people",
+        "description": "Update multiple People records matching a filter in a single operation. All matching records will receive the same field values. WARNING: Use specific filters to avoid unintended mass updates. Always verify the filter scope with a find query first. Returns the updated records."
+      },
+      {
+        "name": "delete_person",
+        "description": "Delete a Person record by marking it as deleted. The record is hidden from normal queries. This is reversible. Use this to remove records."
+      },
+      {
+        "name": "find_tasks",
+        "description": "Search for Tasks records using flexible filtering criteria. Supports exact matches, pattern matching, ranges, and null checks. Use limit/offset for pagination and orderBy for sorting. To find by ID, use filter: { id: { eq: \"record-id\" } }. Returns an array of matching records with their full data."
+      },
+      {
+        "name": "find_one_task",
+        "description": "Retrieve a single Task record by its unique ID. Use this when you know the exact record ID and need the complete record data. Returns the full record or an error if not found."
+      },
+      {
+        "name": "group_by_tasks",
+        "description": "Group Tasks records by one or two fields and compute an aggregate (COUNT, SUM, AVG, MIN, MAX, etc.). Use for questions like \"how many deals per stage?\" or \"total revenue by company\". Returns groups with dimension values and aggregate results, ordered by the aggregate value."
+      },
+      {
+        "name": "create_task",
+        "description": "Create a new Task record. Provide all required fields and any optional fields you want to set. The system will automatically handle timestamps and IDs. Returns the created record with all its data."
+      },
+      {
+        "name": "create_many_tasks",
+        "description": "Create multiple Tasks records in a single call. Provide an array of records, each containing the required fields. Maximum 20 records per call. Returns the created records."
+      },
+      {
+        "name": "update_task",
+        "description": "Update an existing Task record. Provide the record ID and only the fields you want to change. Unspecified fields will remain unchanged. Returns the updated record with all current data."
+      },
+      {
+        "name": "update_many_tasks",
+        "description": "Update multiple Tasks records matching a filter in a single operation. All matching records will receive the same field values. WARNING: Use specific filters to avoid unintended mass updates. Always verify the filter scope with a find query first. Returns the updated records."
+      },
+      {
+        "name": "delete_task",
+        "description": "Delete a Task record by marking it as deleted. The record is hidden from normal queries. This is reversible. Use this to remove records."
       },
       {
         "name": "find_task_targets",
@@ -626,452 +1050,68 @@
         "description": "Delete a Timeline Activity record by marking it as deleted. The record is hidden from normal queries. This is reversible. Use this to remove records."
       },
       {
-        "name": "find_message_threads",
-        "description": "Search for Message Threads records using flexible filtering criteria. Supports exact matches, pattern matching, ranges, and null checks. Use limit/offset for pagination and orderBy for sorting. To find by ID, use filter: { id: { eq: \"record-id\" } }. Returns an array of matching records with their full data."
+        "name": "find_workspace_members",
+        "description": "Search for Workspace Members records using flexible filtering criteria. Supports exact matches, pattern matching, ranges, and null checks. Use limit/offset for pagination and orderBy for sorting. To find by ID, use filter: { id: { eq: \"record-id\" } }. Returns an array of matching records with their full data."
       },
       {
-        "name": "find_one_message_thread",
-        "description": "Retrieve a single Message Thread record by its unique ID. Use this when you know the exact record ID and need the complete record data. Returns the full record or an error if not found."
+        "name": "find_one_workspace_member",
+        "description": "Retrieve a single Workspace Member record by its unique ID. Use this when you know the exact record ID and need the complete record data. Returns the full record or an error if not found."
       },
       {
-        "name": "group_by_message_threads",
-        "description": "Group Message Threads records by one or two fields and compute an aggregate (COUNT, SUM, AVG, MIN, MAX, etc.). Use for questions like \"how many deals per stage?\" or \"total revenue by company\". Returns groups with dimension values and aggregate results, ordered by the aggregate value."
+        "name": "group_by_workspace_members",
+        "description": "Group Workspace Members records by one or two fields and compute an aggregate (COUNT, SUM, AVG, MIN, MAX, etc.). Use for questions like \"how many deals per stage?\" or \"total revenue by company\". Returns groups with dimension values and aggregate results, ordered by the aggregate value."
       },
       {
-        "name": "create_message_thread",
-        "description": "Create a new Message Thread record. Provide all required fields and any optional fields you want to set. The system will automatically handle timestamps and IDs. Returns the created record with all its data."
+        "name": "create_workspace_member",
+        "description": "Create a new Workspace Member record. Provide all required fields and any optional fields you want to set. The system will automatically handle timestamps and IDs. Returns the created record with all its data."
       },
       {
-        "name": "create_many_message_threads",
-        "description": "Create multiple Message Threads records in a single call. Provide an array of records, each containing the required fields. Maximum 20 records per call. Returns the created records."
+        "name": "create_many_workspace_members",
+        "description": "Create multiple Workspace Members records in a single call. Provide an array of records, each containing the required fields. Maximum 20 records per call. Returns the created records."
       },
       {
-        "name": "update_message_thread",
-        "description": "Update an existing Message Thread record. Provide the record ID and only the fields you want to change. Unspecified fields will remain unchanged. Returns the updated record with all current data."
+        "name": "update_workspace_member",
+        "description": "Update an existing Workspace Member record. Provide the record ID and only the fields you want to change. Unspecified fields will remain unchanged. Returns the updated record with all current data."
       },
       {
-        "name": "update_many_message_threads",
-        "description": "Update multiple Message Threads records matching a filter in a single operation. All matching records will receive the same field values. WARNING: Use specific filters to avoid unintended mass updates. Always verify the filter scope with a find query first. Returns the updated records."
+        "name": "update_many_workspace_members",
+        "description": "Update multiple Workspace Members records matching a filter in a single operation. All matching records will receive the same field values. WARNING: Use specific filters to avoid unintended mass updates. Always verify the filter scope with a find query first. Returns the updated records."
       },
       {
-        "name": "delete_message_thread",
-        "description": "Delete a Message Thread record by marking it as deleted. The record is hidden from normal queries. This is reversible. Use this to remove records."
+        "name": "delete_workspace_member",
+        "description": "Delete a Workspace Member record by marking it as deleted. The record is hidden from normal queries. This is reversible. Use this to remove records."
       },
       {
-        "name": "find_calendar_events",
-        "description": "Search for Calendar events records using flexible filtering criteria. Supports exact matches, pattern matching, ranges, and null checks. Use limit/offset for pagination and orderBy for sorting. To find by ID, use filter: { id: { eq: \"record-id\" } }. Returns an array of matching records with their full data."
+        "name": "find_schema_change_audits",
+        "description": "Search for Schema Change Audits records using flexible filtering criteria. Supports exact matches, pattern matching, ranges, and null checks. Use limit/offset for pagination and orderBy for sorting. To find by ID, use filter: { id: { eq: \"record-id\" } }. Returns an array of matching records with their full data."
       },
       {
-        "name": "find_one_calendar_event",
-        "description": "Retrieve a single Calendar event record by its unique ID. Use this when you know the exact record ID and need the complete record data. Returns the full record or an error if not found."
+        "name": "find_one_schema_change_audit",
+        "description": "Retrieve a single Schema Change Audit record by its unique ID. Use this when you know the exact record ID and need the complete record data. Returns the full record or an error if not found."
       },
       {
-        "name": "group_by_calendar_events",
-        "description": "Group Calendar events records by one or two fields and compute an aggregate (COUNT, SUM, AVG, MIN, MAX, etc.). Use for questions like \"how many deals per stage?\" or \"total revenue by company\". Returns groups with dimension values and aggregate results, ordered by the aggregate value."
+        "name": "group_by_schema_change_audits",
+        "description": "Group Schema Change Audits records by one or two fields and compute an aggregate (COUNT, SUM, AVG, MIN, MAX, etc.). Use for questions like \"how many deals per stage?\" or \"total revenue by company\". Returns groups with dimension values and aggregate results, ordered by the aggregate value."
       },
       {
-        "name": "create_calendar_event",
-        "description": "Create a new Calendar event record. Provide all required fields and any optional fields you want to set. The system will automatically handle timestamps and IDs. Returns the created record with all its data."
+        "name": "create_schema_change_audit",
+        "description": "Create a new Schema Change Audit record. Provide all required fields and any optional fields you want to set. The system will automatically handle timestamps and IDs. Returns the created record with all its data."
       },
       {
-        "name": "create_many_calendar_events",
-        "description": "Create multiple Calendar events records in a single call. Provide an array of records, each containing the required fields. Maximum 20 records per call. Returns the created records."
+        "name": "create_many_schema_change_audits",
+        "description": "Create multiple Schema Change Audits records in a single call. Provide an array of records, each containing the required fields. Maximum 20 records per call. Returns the created records."
       },
       {
-        "name": "update_calendar_event",
-        "description": "Update an existing Calendar event record. Provide the record ID and only the fields you want to change. Unspecified fields will remain unchanged. Returns the updated record with all current data."
+        "name": "update_schema_change_audit",
+        "description": "Update an existing Schema Change Audit record. Provide the record ID and only the fields you want to change. Unspecified fields will remain unchanged. Returns the updated record with all current data."
       },
       {
-        "name": "update_many_calendar_events",
-        "description": "Update multiple Calendar events records matching a filter in a single operation. All matching records will receive the same field values. WARNING: Use specific filters to avoid unintended mass updates. Always verify the filter scope with a find query first. Returns the updated records."
+        "name": "update_many_schema_change_audits",
+        "description": "Update multiple Schema Change Audits records matching a filter in a single operation. All matching records will receive the same field values. WARNING: Use specific filters to avoid unintended mass updates. Always verify the filter scope with a find query first. Returns the updated records."
       },
       {
-        "name": "delete_calendar_event",
-        "description": "Delete a Calendar event record by marking it as deleted. The record is hidden from normal queries. This is reversible. Use this to remove records."
-      },
-      {
-        "name": "find_opportunities",
-        "description": "Search for Opportunities records using flexible filtering criteria. Supports exact matches, pattern matching, ranges, and null checks. Use limit/offset for pagination and orderBy for sorting. To find by ID, use filter: { id: { eq: \"record-id\" } }. Returns an array of matching records with their full data."
-      },
-      {
-        "name": "find_one_opportunity",
-        "description": "Retrieve a single Opportunity record by its unique ID. Use this when you know the exact record ID and need the complete record data. Returns the full record or an error if not found."
-      },
-      {
-        "name": "group_by_opportunities",
-        "description": "Group Opportunities records by one or two fields and compute an aggregate (COUNT, SUM, AVG, MIN, MAX, etc.). Use for questions like \"how many deals per stage?\" or \"total revenue by company\". Returns groups with dimension values and aggregate results, ordered by the aggregate value."
-      },
-      {
-        "name": "create_opportunity",
-        "description": "Create a new Opportunity record. Provide all required fields and any optional fields you want to set. The system will automatically handle timestamps and IDs. Returns the created record with all its data."
-      },
-      {
-        "name": "create_many_opportunities",
-        "description": "Create multiple Opportunities records in a single call. Provide an array of records, each containing the required fields. Maximum 20 records per call. Returns the created records."
-      },
-      {
-        "name": "update_opportunity",
-        "description": "Update an existing Opportunity record. Provide the record ID and only the fields you want to change. Unspecified fields will remain unchanged. Returns the updated record with all current data."
-      },
-      {
-        "name": "update_many_opportunities",
-        "description": "Update multiple Opportunities records matching a filter in a single operation. All matching records will receive the same field values. WARNING: Use specific filters to avoid unintended mass updates. Always verify the filter scope with a find query first. Returns the updated records."
-      },
-      {
-        "name": "delete_opportunity",
-        "description": "Delete a Opportunity record by marking it as deleted. The record is hidden from normal queries. This is reversible. Use this to remove records."
-      },
-      {
-        "name": "find_connected_accounts",
-        "description": "Search for Connected Accounts records using flexible filtering criteria. Supports exact matches, pattern matching, ranges, and null checks. Use limit/offset for pagination and orderBy for sorting. To find by ID, use filter: { id: { eq: \"record-id\" } }. Returns an array of matching records with their full data."
-      },
-      {
-        "name": "find_one_connected_account",
-        "description": "Retrieve a single Connected Account record by its unique ID. Use this when you know the exact record ID and need the complete record data. Returns the full record or an error if not found."
-      },
-      {
-        "name": "group_by_connected_accounts",
-        "description": "Group Connected Accounts records by one or two fields and compute an aggregate (COUNT, SUM, AVG, MIN, MAX, etc.). Use for questions like \"how many deals per stage?\" or \"total revenue by company\". Returns groups with dimension values and aggregate results, ordered by the aggregate value."
-      },
-      {
-        "name": "create_connected_account",
-        "description": "Create a new Connected Account record. Provide all required fields and any optional fields you want to set. The system will automatically handle timestamps and IDs. Returns the created record with all its data."
-      },
-      {
-        "name": "create_many_connected_accounts",
-        "description": "Create multiple Connected Accounts records in a single call. Provide an array of records, each containing the required fields. Maximum 20 records per call. Returns the created records."
-      },
-      {
-        "name": "update_connected_account",
-        "description": "Update an existing Connected Account record. Provide the record ID and only the fields you want to change. Unspecified fields will remain unchanged. Returns the updated record with all current data."
-      },
-      {
-        "name": "update_many_connected_accounts",
-        "description": "Update multiple Connected Accounts records matching a filter in a single operation. All matching records will receive the same field values. WARNING: Use specific filters to avoid unintended mass updates. Always verify the filter scope with a find query first. Returns the updated records."
-      },
-      {
-        "name": "delete_connected_account",
-        "description": "Delete a Connected Account record by marking it as deleted. The record is hidden from normal queries. This is reversible. Use this to remove records."
-      },
-      {
-        "name": "find_message_channel_message_association_message_folders",
-        "description": "Search for Message Channel Message Association Message Folders records using flexible filtering criteria. Supports exact matches, pattern matching, ranges, and null checks. Use limit/offset for pagination and orderBy for sorting. To find by ID, use filter: { id: { eq: \"record-id\" } }. Returns an array of matching records with their full data."
-      },
-      {
-        "name": "find_one_message_channel_message_association_message_folder",
-        "description": "Retrieve a single Message Channel Message Association Message Folder record by its unique ID. Use this when you know the exact record ID and need the complete record data. Returns the full record or an error if not found."
-      },
-      {
-        "name": "group_by_message_channel_message_association_message_folders",
-        "description": "Group Message Channel Message Association Message Folders records by one or two fields and compute an aggregate (COUNT, SUM, AVG, MIN, MAX, etc.). Use for questions like \"how many deals per stage?\" or \"total revenue by company\". Returns groups with dimension values and aggregate results, ordered by the aggregate value."
-      },
-      {
-        "name": "create_message_channel_message_association_message_folder",
-        "description": "Create a new Message Channel Message Association Message Folder record. Provide all required fields and any optional fields you want to set. The system will automatically handle timestamps and IDs. Returns the created record with all its data."
-      },
-      {
-        "name": "create_many_message_channel_message_association_message_folders",
-        "description": "Create multiple Message Channel Message Association Message Folders records in a single call. Provide an array of records, each containing the required fields. Maximum 20 records per call. Returns the created records."
-      },
-      {
-        "name": "update_message_channel_message_association_message_folder",
-        "description": "Update an existing Message Channel Message Association Message Folder record. Provide the record ID and only the fields you want to change. Unspecified fields will remain unchanged. Returns the updated record with all current data."
-      },
-      {
-        "name": "update_many_message_channel_message_association_message_folders",
-        "description": "Update multiple Message Channel Message Association Message Folders records matching a filter in a single operation. All matching records will receive the same field values. WARNING: Use specific filters to avoid unintended mass updates. Always verify the filter scope with a find query first. Returns the updated records."
-      },
-      {
-        "name": "delete_message_channel_message_association_message_folder",
-        "description": "Delete a Message Channel Message Association Message Folder record by marking it as deleted. The record is hidden from normal queries. This is reversible. Use this to remove records."
-      },
-      {
-        "name": "find_calendar_event_participants",
-        "description": "Search for Calendar event participants records using flexible filtering criteria. Supports exact matches, pattern matching, ranges, and null checks. Use limit/offset for pagination and orderBy for sorting. To find by ID, use filter: { id: { eq: \"record-id\" } }. Returns an array of matching records with their full data."
-      },
-      {
-        "name": "find_one_calendar_event_participant",
-        "description": "Retrieve a single Calendar event participant record by its unique ID. Use this when you know the exact record ID and need the complete record data. Returns the full record or an error if not found."
-      },
-      {
-        "name": "group_by_calendar_event_participants",
-        "description": "Group Calendar event participants records by one or two fields and compute an aggregate (COUNT, SUM, AVG, MIN, MAX, etc.). Use for questions like \"how many deals per stage?\" or \"total revenue by company\". Returns groups with dimension values and aggregate results, ordered by the aggregate value."
-      },
-      {
-        "name": "create_calendar_event_participant",
-        "description": "Create a new Calendar event participant record. Provide all required fields and any optional fields you want to set. The system will automatically handle timestamps and IDs. Returns the created record with all its data."
-      },
-      {
-        "name": "create_many_calendar_event_participants",
-        "description": "Create multiple Calendar event participants records in a single call. Provide an array of records, each containing the required fields. Maximum 20 records per call. Returns the created records."
-      },
-      {
-        "name": "update_calendar_event_participant",
-        "description": "Update an existing Calendar event participant record. Provide the record ID and only the fields you want to change. Unspecified fields will remain unchanged. Returns the updated record with all current data."
-      },
-      {
-        "name": "update_many_calendar_event_participants",
-        "description": "Update multiple Calendar event participants records matching a filter in a single operation. All matching records will receive the same field values. WARNING: Use specific filters to avoid unintended mass updates. Always verify the filter scope with a find query first. Returns the updated records."
-      },
-      {
-        "name": "delete_calendar_event_participant",
-        "description": "Delete a Calendar event participant record by marking it as deleted. The record is hidden from normal queries. This is reversible. Use this to remove records."
-      },
-      {
-        "name": "find_message_participants",
-        "description": "Search for Message Participants records using flexible filtering criteria. Supports exact matches, pattern matching, ranges, and null checks. Use limit/offset for pagination and orderBy for sorting. To find by ID, use filter: { id: { eq: \"record-id\" } }. Returns an array of matching records with their full data."
-      },
-      {
-        "name": "find_one_message_participant",
-        "description": "Retrieve a single Message Participant record by its unique ID. Use this when you know the exact record ID and need the complete record data. Returns the full record or an error if not found."
-      },
-      {
-        "name": "group_by_message_participants",
-        "description": "Group Message Participants records by one or two fields and compute an aggregate (COUNT, SUM, AVG, MIN, MAX, etc.). Use for questions like \"how many deals per stage?\" or \"total revenue by company\". Returns groups with dimension values and aggregate results, ordered by the aggregate value."
-      },
-      {
-        "name": "create_message_participant",
-        "description": "Create a new Message Participant record. Provide all required fields and any optional fields you want to set. The system will automatically handle timestamps and IDs. Returns the created record with all its data."
-      },
-      {
-        "name": "create_many_message_participants",
-        "description": "Create multiple Message Participants records in a single call. Provide an array of records, each containing the required fields. Maximum 20 records per call. Returns the created records."
-      },
-      {
-        "name": "update_message_participant",
-        "description": "Update an existing Message Participant record. Provide the record ID and only the fields you want to change. Unspecified fields will remain unchanged. Returns the updated record with all current data."
-      },
-      {
-        "name": "update_many_message_participants",
-        "description": "Update multiple Message Participants records matching a filter in a single operation. All matching records will receive the same field values. WARNING: Use specific filters to avoid unintended mass updates. Always verify the filter scope with a find query first. Returns the updated records."
-      },
-      {
-        "name": "delete_message_participant",
-        "description": "Delete a Message Participant record by marking it as deleted. The record is hidden from normal queries. This is reversible. Use this to remove records."
-      },
-      {
-        "name": "find_message_channel_message_associations",
-        "description": "Search for Message Channel Message Associations records using flexible filtering criteria. Supports exact matches, pattern matching, ranges, and null checks. Use limit/offset for pagination and orderBy for sorting. To find by ID, use filter: { id: { eq: \"record-id\" } }. Returns an array of matching records with their full data."
-      },
-      {
-        "name": "find_one_message_channel_message_association",
-        "description": "Retrieve a single Message Channel Message Association record by its unique ID. Use this when you know the exact record ID and need the complete record data. Returns the full record or an error if not found."
-      },
-      {
-        "name": "group_by_message_channel_message_associations",
-        "description": "Group Message Channel Message Associations records by one or two fields and compute an aggregate (COUNT, SUM, AVG, MIN, MAX, etc.). Use for questions like \"how many deals per stage?\" or \"total revenue by company\". Returns groups with dimension values and aggregate results, ordered by the aggregate value."
-      },
-      {
-        "name": "create_message_channel_message_association",
-        "description": "Create a new Message Channel Message Association record. Provide all required fields and any optional fields you want to set. The system will automatically handle timestamps and IDs. Returns the created record with all its data."
-      },
-      {
-        "name": "create_many_message_channel_message_associations",
-        "description": "Create multiple Message Channel Message Associations records in a single call. Provide an array of records, each containing the required fields. Maximum 20 records per call. Returns the created records."
-      },
-      {
-        "name": "update_message_channel_message_association",
-        "description": "Update an existing Message Channel Message Association record. Provide the record ID and only the fields you want to change. Unspecified fields will remain unchanged. Returns the updated record with all current data."
-      },
-      {
-        "name": "update_many_message_channel_message_associations",
-        "description": "Update multiple Message Channel Message Associations records matching a filter in a single operation. All matching records will receive the same field values. WARNING: Use specific filters to avoid unintended mass updates. Always verify the filter scope with a find query first. Returns the updated records."
-      },
-      {
-        "name": "delete_message_channel_message_association",
-        "description": "Delete a Message Channel Message Association record by marking it as deleted. The record is hidden from normal queries. This is reversible. Use this to remove records."
-      },
-      {
-        "name": "find_companies",
-        "description": "Search for Companies records using flexible filtering criteria. Supports exact matches, pattern matching, ranges, and null checks. Use limit/offset for pagination and orderBy for sorting. To find by ID, use filter: { id: { eq: \"record-id\" } }. Returns an array of matching records with their full data."
-      },
-      {
-        "name": "find_one_company",
-        "description": "Retrieve a single Company record by its unique ID. Use this when you know the exact record ID and need the complete record data. Returns the full record or an error if not found."
-      },
-      {
-        "name": "group_by_companies",
-        "description": "Group Companies records by one or two fields and compute an aggregate (COUNT, SUM, AVG, MIN, MAX, etc.). Use for questions like \"how many deals per stage?\" or \"total revenue by company\". Returns groups with dimension values and aggregate results, ordered by the aggregate value."
-      },
-      {
-        "name": "create_company",
-        "description": "Create a new Company record. Provide all required fields and any optional fields you want to set. The system will automatically handle timestamps and IDs. Returns the created record with all its data."
-      },
-      {
-        "name": "create_many_companies",
-        "description": "Create multiple Companies records in a single call. Provide an array of records, each containing the required fields. Maximum 20 records per call. Returns the created records."
-      },
-      {
-        "name": "update_company",
-        "description": "Update an existing Company record. Provide the record ID and only the fields you want to change. Unspecified fields will remain unchanged. Returns the updated record with all current data."
-      },
-      {
-        "name": "update_many_companies",
-        "description": "Update multiple Companies records matching a filter in a single operation. All matching records will receive the same field values. WARNING: Use specific filters to avoid unintended mass updates. Always verify the filter scope with a find query first. Returns the updated records."
-      },
-      {
-        "name": "delete_company",
-        "description": "Delete a Company record by marking it as deleted. The record is hidden from normal queries. This is reversible. Use this to remove records."
-      },
-      {
-        "name": "find_attachments",
-        "description": "Search for Attachments records using flexible filtering criteria. Supports exact matches, pattern matching, ranges, and null checks. Use limit/offset for pagination and orderBy for sorting. To find by ID, use filter: { id: { eq: \"record-id\" } }. Returns an array of matching records with their full data."
-      },
-      {
-        "name": "find_one_attachment",
-        "description": "Retrieve a single Attachment record by its unique ID. Use this when you know the exact record ID and need the complete record data. Returns the full record or an error if not found."
-      },
-      {
-        "name": "group_by_attachments",
-        "description": "Group Attachments records by one or two fields and compute an aggregate (COUNT, SUM, AVG, MIN, MAX, etc.). Use for questions like \"how many deals per stage?\" or \"total revenue by company\". Returns groups with dimension values and aggregate results, ordered by the aggregate value."
-      },
-      {
-        "name": "create_attachment",
-        "description": "Create a new Attachment record. Provide all required fields and any optional fields you want to set. The system will automatically handle timestamps and IDs. Returns the created record with all its data."
-      },
-      {
-        "name": "create_many_attachments",
-        "description": "Create multiple Attachments records in a single call. Provide an array of records, each containing the required fields. Maximum 20 records per call. Returns the created records."
-      },
-      {
-        "name": "update_attachment",
-        "description": "Update an existing Attachment record. Provide the record ID and only the fields you want to change. Unspecified fields will remain unchanged. Returns the updated record with all current data."
-      },
-      {
-        "name": "update_many_attachments",
-        "description": "Update multiple Attachments records matching a filter in a single operation. All matching records will receive the same field values. WARNING: Use specific filters to avoid unintended mass updates. Always verify the filter scope with a find query first. Returns the updated records."
-      },
-      {
-        "name": "delete_attachment",
-        "description": "Delete a Attachment record by marking it as deleted. The record is hidden from normal queries. This is reversible. Use this to remove records."
-      },
-      {
-        "name": "find_people",
-        "description": "Search for People records using flexible filtering criteria. Supports exact matches, pattern matching, ranges, and null checks. Use limit/offset for pagination and orderBy for sorting. To find by ID, use filter: { id: { eq: \"record-id\" } }. Returns an array of matching records with their full data."
-      },
-      {
-        "name": "find_one_person",
-        "description": "Retrieve a single Person record by its unique ID. Use this when you know the exact record ID and need the complete record data. Returns the full record or an error if not found."
-      },
-      {
-        "name": "group_by_people",
-        "description": "Group People records by one or two fields and compute an aggregate (COUNT, SUM, AVG, MIN, MAX, etc.). Use for questions like \"how many deals per stage?\" or \"total revenue by company\". Returns groups with dimension values and aggregate results, ordered by the aggregate value."
-      },
-      {
-        "name": "create_person",
-        "description": "Create a new Person record. Provide all required fields and any optional fields you want to set. The system will automatically handle timestamps and IDs. Returns the created record with all its data."
-      },
-      {
-        "name": "create_many_people",
-        "description": "Create multiple People records in a single call. Provide an array of records, each containing the required fields. Maximum 20 records per call. Returns the created records."
-      },
-      {
-        "name": "update_person",
-        "description": "Update an existing Person record. Provide the record ID and only the fields you want to change. Unspecified fields will remain unchanged. Returns the updated record with all current data."
-      },
-      {
-        "name": "update_many_people",
-        "description": "Update multiple People records matching a filter in a single operation. All matching records will receive the same field values. WARNING: Use specific filters to avoid unintended mass updates. Always verify the filter scope with a find query first. Returns the updated records."
-      },
-      {
-        "name": "delete_person",
-        "description": "Delete a Person record by marking it as deleted. The record is hidden from normal queries. This is reversible. Use this to remove records."
-      },
-      {
-        "name": "find_calendar_channels",
-        "description": "Search for Calendar Channels records using flexible filtering criteria. Supports exact matches, pattern matching, ranges, and null checks. Use limit/offset for pagination and orderBy for sorting. To find by ID, use filter: { id: { eq: \"record-id\" } }. Returns an array of matching records with their full data."
-      },
-      {
-        "name": "find_one_calendar_channel",
-        "description": "Retrieve a single Calendar Channel record by its unique ID. Use this when you know the exact record ID and need the complete record data. Returns the full record or an error if not found."
-      },
-      {
-        "name": "group_by_calendar_channels",
-        "description": "Group Calendar Channels records by one or two fields and compute an aggregate (COUNT, SUM, AVG, MIN, MAX, etc.). Use for questions like \"how many deals per stage?\" or \"total revenue by company\". Returns groups with dimension values and aggregate results, ordered by the aggregate value."
-      },
-      {
-        "name": "create_calendar_channel",
-        "description": "Create a new Calendar Channel record. Provide all required fields and any optional fields you want to set. The system will automatically handle timestamps and IDs. Returns the created record with all its data."
-      },
-      {
-        "name": "create_many_calendar_channels",
-        "description": "Create multiple Calendar Channels records in a single call. Provide an array of records, each containing the required fields. Maximum 20 records per call. Returns the created records."
-      },
-      {
-        "name": "update_calendar_channel",
-        "description": "Update an existing Calendar Channel record. Provide the record ID and only the fields you want to change. Unspecified fields will remain unchanged. Returns the updated record with all current data."
-      },
-      {
-        "name": "update_many_calendar_channels",
-        "description": "Update multiple Calendar Channels records matching a filter in a single operation. All matching records will receive the same field values. WARNING: Use specific filters to avoid unintended mass updates. Always verify the filter scope with a find query first. Returns the updated records."
-      },
-      {
-        "name": "delete_calendar_channel",
-        "description": "Delete a Calendar Channel record by marking it as deleted. The record is hidden from normal queries. This is reversible. Use this to remove records."
-      },
-      {
-        "name": "find_message_channels",
-        "description": "Search for Message Channels records using flexible filtering criteria. Supports exact matches, pattern matching, ranges, and null checks. Use limit/offset for pagination and orderBy for sorting. To find by ID, use filter: { id: { eq: \"record-id\" } }. Returns an array of matching records with their full data."
-      },
-      {
-        "name": "find_one_message_channel",
-        "description": "Retrieve a single Message Channel record by its unique ID. Use this when you know the exact record ID and need the complete record data. Returns the full record or an error if not found."
-      },
-      {
-        "name": "group_by_message_channels",
-        "description": "Group Message Channels records by one or two fields and compute an aggregate (COUNT, SUM, AVG, MIN, MAX, etc.). Use for questions like \"how many deals per stage?\" or \"total revenue by company\". Returns groups with dimension values and aggregate results, ordered by the aggregate value."
-      },
-      {
-        "name": "create_message_channel",
-        "description": "Create a new Message Channel record. Provide all required fields and any optional fields you want to set. The system will automatically handle timestamps and IDs. Returns the created record with all its data."
-      },
-      {
-        "name": "create_many_message_channels",
-        "description": "Create multiple Message Channels records in a single call. Provide an array of records, each containing the required fields. Maximum 20 records per call. Returns the created records."
-      },
-      {
-        "name": "update_message_channel",
-        "description": "Update an existing Message Channel record. Provide the record ID and only the fields you want to change. Unspecified fields will remain unchanged. Returns the updated record with all current data."
-      },
-      {
-        "name": "update_many_message_channels",
-        "description": "Update multiple Message Channels records matching a filter in a single operation. All matching records will receive the same field values. WARNING: Use specific filters to avoid unintended mass updates. Always verify the filter scope with a find query first. Returns the updated records."
-      },
-      {
-        "name": "delete_message_channel",
-        "description": "Delete a Message Channel record by marking it as deleted. The record is hidden from normal queries. This is reversible. Use this to remove records."
-      },
-      {
-        "name": "find_note_targets",
-        "description": "Search for Note Targets records using flexible filtering criteria. Supports exact matches, pattern matching, ranges, and null checks. Use limit/offset for pagination and orderBy for sorting. To find by ID, use filter: { id: { eq: \"record-id\" } }. Returns an array of matching records with their full data."
-      },
-      {
-        "name": "find_one_note_target",
-        "description": "Retrieve a single Note Target record by its unique ID. Use this when you know the exact record ID and need the complete record data. Returns the full record or an error if not found."
-      },
-      {
-        "name": "group_by_note_targets",
-        "description": "Group Note Targets records by one or two fields and compute an aggregate (COUNT, SUM, AVG, MIN, MAX, etc.). Use for questions like \"how many deals per stage?\" or \"total revenue by company\". Returns groups with dimension values and aggregate results, ordered by the aggregate value."
-      },
-      {
-        "name": "create_note_target",
-        "description": "Create a new Note Target record. Provide all required fields and any optional fields you want to set. The system will automatically handle timestamps and IDs. Returns the created record with all its data."
-      },
-      {
-        "name": "create_many_note_targets",
-        "description": "Create multiple Note Targets records in a single call. Provide an array of records, each containing the required fields. Maximum 20 records per call. Returns the created records."
-      },
-      {
-        "name": "update_note_target",
-        "description": "Update an existing Note Target record. Provide the record ID and only the fields you want to change. Unspecified fields will remain unchanged. Returns the updated record with all current data."
-      },
-      {
-        "name": "update_many_note_targets",
-        "description": "Update multiple Note Targets records matching a filter in a single operation. All matching records will receive the same field values. WARNING: Use specific filters to avoid unintended mass updates. Always verify the filter scope with a find query first. Returns the updated records."
-      },
-      {
-        "name": "delete_note_target",
-        "description": "Delete a Note Target record by marking it as deleted. The record is hidden from normal queries. This is reversible. Use this to remove records."
+        "name": "delete_schema_change_audit",
+        "description": "Delete a Schema Change Audit record by marking it as deleted. The record is hidden from normal queries. This is reversible. Use this to remove records."
       }
     ],
     "METADATA": [
@@ -1275,7 +1315,7 @@
       },
       {
         "name": "list_logic_function_tools",
-        "description": "List all logic functions marked as tools that can be added as LOGIC_FUNCTION steps in workflows. Returns their IDs, names, and descriptions."
+        "description": "List all logic functions exposed as workflow actions, which can be added as LOGIC_FUNCTION steps in workflows. Returns their IDs, names, and descriptions."
       }
     ]
   }

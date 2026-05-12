@@ -6,7 +6,7 @@
 >   - `packages/twenty-mcp/plans/issue-17-zod-runtime-validation-view-filter-rows-round-trip-test.md`
 >   - `packages/twenty-mcp/plans/issue-18-add-lint-diff-with-main-nx-target.md`
 > Audit cycles: 1 (clean — proceeded to retrospective)
-> Commit: pending — filled by closer post-commit
+> Commit: 6a31729b01 — feat(twenty-mcp): test rigor + Nx lint gate polish (closes #16, #17, #18)
 > Written: 2026-05-12T00:00:00Z
 
 ## Forecast vs actual
