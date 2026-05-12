@@ -88,7 +88,10 @@ export const metadataCreateObjectInputSchema = z.object({
   labelSingular: z.string().min(1).describe('Display label, singular.'),
   labelPlural: z.string().min(1).describe('Display label, plural.'),
   description: z.string().optional(),
-  icon: z.string().optional().describe('e.g. "IconHistory" — see Twenty\'s icon set.'),
+  icon: z
+    .string()
+    .optional()
+    .describe('e.g. "IconHistory" — see Twenty\'s icon set.'),
   shortcut: z.string().optional(),
   isRemote: z.boolean().optional(),
   isLabelSyncedWithName: z.boolean().optional(),
@@ -153,18 +156,26 @@ export const metadataCreateManyFieldsInputSchema = z.object({
     .array(metadataCreateFieldInputSchema)
     .min(1)
     .max(20)
-    .describe('Array of fields to create on (potentially different) objects. 1-20 items.'),
+    .describe(
+      'Array of fields to create on (potentially different) objects. 1-20 items.',
+    ),
 });
 
 export const metadataCreateRelationInputSchema = z.object({
   objectMetadataId: z.string().uuid().describe('Source object id.'),
-  name: z.string().min(1).describe('Internal name of the relation field (camelCase).'),
+  name: z
+    .string()
+    .min(1)
+    .describe('Internal name of the relation field (camelCase).'),
   label: z.string().min(1),
   description: z.string().optional(),
   icon: z.string().optional(),
   type: z.enum(['MANY_TO_ONE', 'ONE_TO_MANY']),
   targetObjectMetadataId: z.string().uuid().describe('Target object id.'),
-  targetFieldLabel: z.string().min(1).describe('Inverse relation label on the target object.'),
+  targetFieldLabel: z
+    .string()
+    .min(1)
+    .describe('Inverse relation label on the target object.'),
   targetFieldIcon: z.string().min(1),
 });
 
@@ -207,12 +218,19 @@ const ApplyPlanMutation = z.object({
     .min(1)
     .describe('Stable client-side idempotency key, unique within the plan.'),
   op: ApplyPlanOpKind,
-  args: z.record(z.string(), z.unknown()).describe('Inner-tool / GraphQL arguments for this op.'),
+  args: z
+    .record(z.string(), z.unknown())
+    .describe('Inner-tool / GraphQL arguments for this op.'),
 });
 
 export const metadataComputePlanHashInputSchema = z.object({
-  mutations: z.array(ApplyPlanMutation).min(1).max(50)
-    .describe('The mutations array you intend to pass to metadata_apply_plan. Returns the expectedSha256 value to use.'),
+  mutations: z
+    .array(ApplyPlanMutation)
+    .min(1)
+    .max(50)
+    .describe(
+      'The mutations array you intend to pass to metadata_apply_plan. Returns the expectedSha256 value to use.',
+    ),
 });
 
 export const metadataApplyPlanInputSchema = z.object({
@@ -232,7 +250,7 @@ export const metadataApplyPlanInputSchema = z.object({
     .regex(/^[a-f0-9]{64}$/)
     .optional()
     .describe(
-      'SHA-256 (lowercase hex) of the wrapper\'s canonical JSON of the mutations array.\nCanonical form: recursively sort all object keys lexicographically, no whitespace, UTF-8 encoding.\nUse metadata_compute_plan_hash({ mutations }) to obtain the correct hash — this sidesteps spec ambiguity entirely.\nIf computing manually: JSON.stringify with all nested keys sorted; in Node.js: use the canonicalize helper (same as this wrapper). In Python: json.dumps with a recursive sort_keys implementation (stdlib sort_keys=True does NOT recurse into nested objects).',
+      "SHA-256 (lowercase hex) of the wrapper's canonical JSON of the mutations array.\nCanonical form: recursively sort all object keys lexicographically, no whitespace, UTF-8 encoding.\nUse metadata_compute_plan_hash({ mutations }) to obtain the correct hash — this sidesteps spec ambiguity entirely.\nIf computing manually: JSON.stringify with all nested keys sorted; in Node.js: use the canonicalize helper (same as this wrapper). In Python: json.dumps with a recursive sort_keys implementation (stdlib sort_keys=True does NOT recurse into nested objects).",
     ),
 });
 
@@ -242,16 +260,31 @@ export const metadataApplyPlanInputSchema = z.object({
 // modules (so each module owns its own routing).
 
 const dataModelDispatch: Record<string, DispatchEntry> = {
-  CREATE_OBJECT: { transport: 'inner_tool', innerToolName: 'create_object_metadata' },
-  CREATE_FIELD: { transport: 'inner_tool', innerToolName: 'create_field_metadata' },
-  UPDATE_FIELD: { transport: 'inner_tool', innerToolName: 'update_field_metadata' },
+  CREATE_OBJECT: {
+    transport: 'inner_tool',
+    innerToolName: 'create_object_metadata',
+  },
+  CREATE_FIELD: {
+    transport: 'inner_tool',
+    innerToolName: 'create_field_metadata',
+  },
+  UPDATE_FIELD: {
+    transport: 'inner_tool',
+    innerToolName: 'update_field_metadata',
+  },
   CREATE_RELATION: {
     transport: 'inner_tool',
     innerToolName: 'create_many_relation_fields',
     argsTransform: (args) => ({ relations: [args] }),
   },
-  UPDATE_OBJECT: { transport: 'inner_tool', innerToolName: 'update_object_metadata' },
-  BULK_CREATE_FIELD: { transport: 'inner_tool', innerToolName: 'create_many_field_metadata' },
+  UPDATE_OBJECT: {
+    transport: 'inner_tool',
+    innerToolName: 'update_object_metadata',
+  },
+  BULK_CREATE_FIELD: {
+    transport: 'inner_tool',
+    innerToolName: 'create_many_field_metadata',
+  },
 };
 
 const APPLY_PLAN_DISPATCH: Record<string, DispatchEntry> = {
@@ -270,7 +303,9 @@ const wrapInExecute = (
   client.toolsCall('execute_tool', { toolName: innerName, arguments: args });
 
 const wrapGraphqlResult = (data: unknown): ToolsCallResult => ({
-  content: [{ type: 'text', text: JSON.stringify({ success: true, result: data }) }],
+  content: [
+    { type: 'text', text: JSON.stringify({ success: true, result: data }) },
+  ],
   isError: false,
 });
 
@@ -297,7 +332,8 @@ const QUERY_ROUTES: Record<z.infer<typeof MetadataQueryKind>, QueryRoute> = {
   },
   api_keys: {
     transport: 'graphql',
-    query: 'query { apiKeys { id name expiresAt revokedAt createdAt updatedAt } }',
+    query:
+      'query { apiKeys { id name expiresAt revokedAt createdAt updatedAt } }',
   },
   webhooks: {
     transport: 'graphql',
@@ -337,8 +373,14 @@ const decodeJwtClaims = (jwt: string): Record<string, unknown> => {
   if (parts.length !== 3 || !parts[1]) {
     throw new Error('not a JWT (expected 3 dot-separated segments)');
   }
-  const padded = parts[1].padEnd(parts[1].length + ((4 - (parts[1].length % 4)) % 4), '=');
-  const json = Buffer.from(padded.replace(/-/g, '+').replace(/_/g, '/'), 'base64').toString('utf8');
+  const padded = parts[1].padEnd(
+    parts[1].length + ((4 - (parts[1].length % 4)) % 4),
+    '=',
+  );
+  const json = Buffer.from(
+    padded.replace(/-/g, '+').replace(/_/g, '/'),
+    'base64',
+  ).toString('utf8');
 
   return JSON.parse(json) as Record<string, unknown>;
 };
@@ -363,7 +405,9 @@ export const buildMetadataHandlers = (
   client: TwentyMcpClient,
   apiKey: string,
 ) => ({
-  metadataQuery: async (args: z.infer<typeof metadataQueryInputSchema>): Promise<ToolsCallResult> => {
+  metadataQuery: async (
+    args: z.infer<typeof metadataQueryInputSchema>,
+  ): Promise<ToolsCallResult> => {
     const route = QUERY_ROUTES[args.kind];
     if (route.transport === 'inner_tool') {
       return wrapInExecute(client, route.innerToolName, args.args ?? {});
@@ -373,11 +417,13 @@ export const buildMetadataHandlers = (
     return wrapGraphqlResult(data);
   },
 
-  metadataCreateObject: (args: z.infer<typeof metadataCreateObjectInputSchema>) =>
-    wrapInExecute(client, 'create_object_metadata', args),
+  metadataCreateObject: (
+    args: z.infer<typeof metadataCreateObjectInputSchema>,
+  ) => wrapInExecute(client, 'create_object_metadata', args),
 
-  metadataUpdateObject: (args: z.infer<typeof metadataUpdateObjectInputSchema>) =>
-    wrapInExecute(client, 'update_object_metadata', args),
+  metadataUpdateObject: (
+    args: z.infer<typeof metadataUpdateObjectInputSchema>,
+  ) => wrapInExecute(client, 'update_object_metadata', args),
 
   metadataCreateField: (args: z.infer<typeof metadataCreateFieldInputSchema>) =>
     wrapInExecute(client, 'create_field_metadata', args),
@@ -385,15 +431,18 @@ export const buildMetadataHandlers = (
   metadataUpdateField: (args: z.infer<typeof metadataUpdateFieldInputSchema>) =>
     wrapInExecute(client, 'update_field_metadata', args),
 
-  metadataCreateManyFields: (args: z.infer<typeof metadataCreateManyFieldsInputSchema>) =>
-    wrapInExecute(client, 'create_many_field_metadata', args),
+  metadataCreateManyFields: (
+    args: z.infer<typeof metadataCreateManyFieldsInputSchema>,
+  ) => wrapInExecute(client, 'create_many_field_metadata', args),
 
   /**
    * `create_many_relation_fields` takes `{relations: [...]}`; we expose a
    * single-relation API at the proxy boundary for clarity. Callers that want
    * batch creation can issue multiple metadata_apply_plan mutations.
    */
-  metadataCreateRelation: (args: z.infer<typeof metadataCreateRelationInputSchema>) =>
+  metadataCreateRelation: (
+    args: z.infer<typeof metadataCreateRelationInputSchema>,
+  ) =>
     wrapInExecute(client, 'create_many_relation_fields', { relations: [args] }),
 
   /**
@@ -411,19 +460,32 @@ export const buildMetadataHandlers = (
       workspaceId: claims.workspaceId ?? null,
       type: claims.type ?? null,
       issuedAt:
-        typeof claims.iat === 'number' ? new Date(claims.iat * 1000).toISOString() : null,
+        typeof claims.iat === 'number'
+          ? new Date(claims.iat * 1000).toISOString()
+          : null,
       expiresAt:
-        typeof claims.exp === 'number' ? new Date(claims.exp * 1000).toISOString() : null,
+        typeof claims.exp === 'number'
+          ? new Date(claims.exp * 1000).toISOString()
+          : null,
     };
 
     return {
-      content: [{ type: 'text', text: JSON.stringify({ success: true, result }) }],
+      content: [
+        { type: 'text', text: JSON.stringify({ success: true, result }) },
+      ],
       isError: false,
     };
   },
 
-  metadataComputePlanHash: (args: z.infer<typeof metadataComputePlanHashInputSchema>): ToolsCallResult => ({
-    content: [{ type: 'text', text: JSON.stringify({ hash: sha256OfMutations(args.mutations) }) }],
+  metadataComputePlanHash: (
+    args: z.infer<typeof metadataComputePlanHashInputSchema>,
+  ): ToolsCallResult => ({
+    content: [
+      {
+        type: 'text',
+        text: JSON.stringify({ hash: sha256OfMutations(args.mutations) }),
+      },
+    ],
     isError: false,
   }),
 
@@ -469,23 +531,30 @@ export const buildMetadataHandlers = (
         if (braced?.[1] && map[braced[1]] !== undefined) return map[braced[1]];
         return value;
       }
-      if (Array.isArray(value)) return value.map((v) => resolvePlaceholders(v, map));
+      if (Array.isArray(value))
+        return value.map((v) => resolvePlaceholders(v, map));
       if (value !== null && typeof value === 'object') {
         return Object.fromEntries(
-          Object.entries(value as Record<string, unknown>).map(([k, v]) => [k, resolvePlaceholders(v, map)]),
+          Object.entries(value as Record<string, unknown>).map(([k, v]) => [
+            k,
+            resolvePlaceholders(v, map),
+          ]),
         );
       }
       return value;
     };
 
-    // Returns the first unresolved $<key> placeholder found in a resolved-args object,
-    // or null if all placeholders were substituted.
-    const findUnresolved = (value: unknown): string | null => {
+    // Returns the first unresolved placeholder found in a resolved-args object as
+    // a structured { key } object (key is the bare placeholder key without $/{}).
+    // Returns null if all placeholders were substituted.
+    // Returning the already-extracted key avoids a second regex parse at the call site
+    // and is immune to any future change in placeholder syntax.
+    const findUnresolved = (value: unknown): { key: string } | null => {
       if (typeof value === 'string') {
         const simple = value.match(/^\$([a-zA-Z0-9_]+)$/);
-        if (simple?.[1]) return value;
+        if (simple?.[1]) return { key: simple[1] };
         const braced = value.match(/^\$\{([a-zA-Z0-9_]+)\}$/);
-        if (braced?.[1]) return value;
+        if (braced?.[1]) return { key: braced[1] };
         return null;
       }
       if (Array.isArray(value)) {
@@ -521,16 +590,20 @@ export const buildMetadataHandlers = (
       }
 
       // Substitute $<key> and ${<key>} placeholders before dispatch.
-      const effectiveArgs = resolvePlaceholders(m.args, resolved) as Record<string, unknown>;
+      const effectiveArgs = resolvePlaceholders(m.args, resolved) as Record<
+        string,
+        unknown
+      >;
 
       // Fail fast if any placeholder was not resolved — prevents forwarding
       // literal placeholder strings to Twenty.
       const unresolvedPlaceholder = findUnresolved(effectiveArgs);
       if (unresolvedPlaceholder !== null) {
+        const { key: unresolvedKey } = unresolvedPlaceholder;
         failed = {
           key: m.key,
           op: m.op,
-          error: `unresolved placeholder ${unresolvedPlaceholder} — referenced mutation '${unresolvedPlaceholder.replace(/^\$\{?([a-zA-Z0-9_]+)\}?$/, '$1')}' either failed, was skipped, or does not precede this mutation in the plan`,
+          error: `unresolved placeholder $${unresolvedKey} — referenced mutation '${unresolvedKey}' either failed, was skipped, or does not precede this mutation in the plan`,
         };
         break;
       }
@@ -549,7 +622,7 @@ export const buildMetadataHandlers = (
             op: m.op,
             error:
               `apply_plan ${m.op} requires fieldMetadataId when updating operand. ` +
-              'Look up via metadata_query({kind: \'view_filters\', args: {viewId: <viewId>}}) and supply it in the plan.',
+              "Look up via metadata_query({kind: 'view_filters', args: {viewId: <viewId>}}) and supply it in the plan.",
           };
           break;
         }
@@ -570,7 +643,11 @@ export const buildMetadataHandlers = (
           const innerArgs = dispatch.argsTransform
             ? dispatch.argsTransform(effectiveArgs)
             : effectiveArgs;
-          result = await wrapInExecute(client, dispatch.innerToolName, innerArgs);
+          result = await wrapInExecute(
+            client,
+            dispatch.innerToolName,
+            innerArgs,
+          );
         } else {
           const { query, variables } = dispatch.build(effectiveArgs);
           const data = await client.graphqlMutation(query, variables);
@@ -587,14 +664,18 @@ export const buildMetadataHandlers = (
         //              so parsed.result.id is undefined — id is one level deeper)
         // Try all three in order; skip silently if no id is found (not all ops return an id).
         try {
-          const text = (result.content[0] as { type: string; text: string } | undefined)?.text;
+          const text = (
+            result.content[0] as { type: string; text: string } | undefined
+          )?.text;
           if (text) {
             const parsed = JSON.parse(text) as Record<string, unknown>;
             const id =
               // Shape 1
               (parsed.id as string | undefined) ??
               // Shape 2
-              ((parsed.result as Record<string, unknown> | undefined)?.id as string | undefined) ??
+              ((parsed.result as Record<string, unknown> | undefined)?.id as
+                | string
+                | undefined) ??
               // Shape 3 — walk one level deeper into parsed.result for the first object with an id
               (() => {
                 const r = parsed.result as Record<string, unknown> | undefined;
@@ -643,49 +724,49 @@ export const metadataToolDefinitions = {
   metadata_query: {
     title: 'Read CRM metadata catalog',
     description:
-      'Read entries from Twenty\'s metadata catalog. Kinds `objects/fields/views/view_fields/view_filters/view_sorts` route to inner tools (read-only). Kinds `roles/api_keys/webhooks` route to GraphQL queries (Twenty exposes those as resolvers only). Pass `kind`; `args` is honoured for inner-tool kinds (e.g. `{id?, objectMetadataId?, limit?}`) and ignored for GraphQL kinds.',
+      "Read entries from Twenty's metadata catalog. Kinds `objects/fields/views/view_fields/view_filters/view_sorts` route to inner tools (read-only). Kinds `roles/api_keys/webhooks` route to GraphQL queries (Twenty exposes those as resolvers only). Pass `kind`; `args` is honoured for inner-tool kinds (e.g. `{id?, objectMetadataId?, limit?}`) and ignored for GraphQL kinds.",
     inputSchema: metadataQueryInputSchema.shape,
     annotations: { readOnlyHint: true, idempotentHint: true },
   },
   metadata_create_object: {
     title: 'Create a custom CRM object',
     description:
-      'Create a new custom object in the workspace data model. Routes to Twenty\'s `create_object_metadata` inner tool. Use camelCase for nameSingular/namePlural.',
+      "Create a new custom object in the workspace data model. Routes to Twenty's `create_object_metadata` inner tool. Use camelCase for nameSingular/namePlural.",
     inputSchema: metadataCreateObjectInputSchema.shape,
     annotations: { destructiveHint: true, idempotentHint: false },
   },
   metadata_update_object: {
     title: 'Update a custom CRM object',
     description:
-      'Update an existing custom object\'s name, label, icon, or active flag. Routes to Twenty\'s `update_object_metadata` inner tool. Cannot modify standard objects (Twenty rejects).',
+      "Update an existing custom object's name, label, icon, or active flag. Routes to Twenty's `update_object_metadata` inner tool. Cannot modify standard objects (Twenty rejects).",
     inputSchema: metadataUpdateObjectInputSchema.shape,
     annotations: { destructiveHint: true, idempotentHint: true },
   },
   metadata_create_field: {
     title: 'Create a custom field on a CRM object',
     description:
-      'Create a custom field on an existing object (standard or custom). Routes to Twenty\'s `create_field_metadata` inner tool. For SELECT/MULTI_SELECT, `options` value must be UPPER_SNAKE_CASE. Twenty silently no-ops on duplicate camelCase names — use search-before-create or rely on resumeFrom + audit lookup for idempotency.',
+      "Create a custom field on an existing object (standard or custom). Routes to Twenty's `create_field_metadata` inner tool. For SELECT/MULTI_SELECT, `options` value must be UPPER_SNAKE_CASE. Twenty silently no-ops on duplicate camelCase names — use search-before-create or rely on resumeFrom + audit lookup for idempotency.",
     inputSchema: metadataCreateFieldInputSchema.shape,
     annotations: { destructiveHint: true, idempotentHint: false },
   },
   metadata_update_field: {
     title: 'Update a custom field',
     description:
-      'Update a custom field\'s name, label, options, active flag, etc. Routes to Twenty\'s `update_field_metadata` inner tool.',
+      "Update a custom field's name, label, options, active flag, etc. Routes to Twenty's `update_field_metadata` inner tool.",
     inputSchema: metadataUpdateFieldInputSchema.shape,
     annotations: { destructiveHint: true, idempotentHint: true },
   },
   metadata_create_many_fields: {
     title: 'Batch-create custom fields',
     description:
-      'Create 1-20 custom fields in a single call (potentially across different objects). Routes to Twenty\'s `create_many_field_metadata` inner tool. Useful when bootstrapping a new custom object with several fields.',
+      "Create 1-20 custom fields in a single call (potentially across different objects). Routes to Twenty's `create_many_field_metadata` inner tool. Useful when bootstrapping a new custom object with several fields.",
     inputSchema: metadataCreateManyFieldsInputSchema.shape,
     annotations: { destructiveHint: true, idempotentHint: false },
   },
   metadata_create_relation: {
     title: 'Create a relation between two CRM objects',
     description:
-      'Create a single MANY_TO_ONE or ONE_TO_MANY relation field on the source object pointing to the target. Routes to Twenty\'s `create_many_relation_fields` inner tool with a single-relation array.',
+      "Create a single MANY_TO_ONE or ONE_TO_MANY relation field on the source object pointing to the target. Routes to Twenty's `create_many_relation_fields` inner tool with a single-relation array.",
     inputSchema: metadataCreateRelationInputSchema.shape,
     annotations: { destructiveHint: true, idempotentHint: false },
   },

@@ -1,24 +1,52 @@
-import { buildViewHandlers, FIELD_TYPE_OPERAND_MAP, viewsDispatchEntries } from '../tools/views';
+import {
+  buildViewHandlers,
+  FIELD_TYPE_OPERAND_MAP,
+  viewsDispatchEntries,
+} from '../tools/views';
 import { TwentyMcpClient } from '../twenty-mcp-client';
 
 // Canonical mock response for get_field_metadata: returns a SELECT field by default.
 // Tests that need a specific type override the mock.
 const MOCK_SELECT_FIELD_RESPONSE = {
-  content: [{ type: 'text', text: JSON.stringify([{ id: '00000000-0000-0000-0000-000000000003', type: 'SELECT', name: 'status' }]) }],
+  content: [
+    {
+      type: 'text',
+      text: JSON.stringify([
+        {
+          id: '00000000-0000-0000-0000-000000000003',
+          type: 'SELECT',
+          name: 'status',
+        },
+      ]),
+    },
+  ],
   isError: false,
 };
 
 const makeClient = (fieldType = 'SELECT') => {
   const fieldResponse = {
-    content: [{ type: 'text', text: JSON.stringify([{ id: '00000000-0000-0000-0000-000000000003', type: fieldType, name: 'testField' }]) }],
+    content: [
+      {
+        type: 'text',
+        text: JSON.stringify([
+          {
+            id: '00000000-0000-0000-0000-000000000003',
+            type: fieldType,
+            name: 'testField',
+          },
+        ]),
+      },
+    ],
     isError: false,
   };
-  const toolsCall = jest.fn().mockImplementation((method: string, args: { toolName?: string }) => {
-    if (args.toolName === 'get_field_metadata') {
-      return Promise.resolve(fieldResponse);
-    }
-    return Promise.resolve({ content: [{ type: 'text', text: 'ok' }] });
-  });
+  const toolsCall = jest
+    .fn()
+    .mockImplementation((method: string, args: { toolName?: string }) => {
+      if (args.toolName === 'get_field_metadata') {
+        return Promise.resolve(fieldResponse);
+      }
+      return Promise.resolve({ content: [{ type: 'text', text: 'ok' }] });
+    });
   const graphqlMutation = jest.fn();
 
   return {
@@ -81,7 +109,9 @@ describe('views — wire-level routing', () => {
   it('all view dispatch entries use inner_tool transport', () => {
     for (const [op, entry] of Object.entries(viewsDispatchEntries)) {
       expect(entry.transport).toBe('inner_tool');
-      expect((entry as { innerToolName: string }).innerToolName).toMatch(/^(create|update)_view/);
+      expect((entry as { innerToolName: string }).innerToolName).toMatch(
+        /^(create|update)_view/,
+      );
       expect(op).toMatch(/^(CREATE|UPDATE)_VIEW/);
     }
   });
@@ -131,7 +161,9 @@ describe('metadataCreateViewFilter — operand validation', () => {
   });
 
   it('operand unknown type fails open (with console.warn)', async () => {
-    const warnSpy = jest.spyOn(console, 'warn').mockImplementation(() => undefined);
+    const warnSpy = jest
+      .spyOn(console, 'warn')
+      .mockImplementation(() => undefined);
     // RICH_TEXT is not in FIELD_TYPE_OPERAND_MAP
     const { toolsCall, client } = makeClient('RICH_TEXT');
     const handlers = buildViewHandlers(client);
@@ -144,7 +176,9 @@ describe('metadataCreateViewFilter — operand validation', () => {
     });
 
     expect(result.isError).toBeFalsy();
-    expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining('unknown field type'));
+    expect(warnSpy).toHaveBeenCalledWith(
+      expect.stringContaining('unknown field type'),
+    );
     const createCalls = toolsCall.mock.calls.filter(
       (c) => (c[1] as { toolName: string })?.toolName === 'create_view_filter',
     );
@@ -155,12 +189,17 @@ describe('metadataCreateViewFilter — operand validation', () => {
 
   it('operand empty metadata fails closed', async () => {
     // get_field_metadata returns empty array — field not found
-    const toolsCall = jest.fn().mockImplementation((_method: string, args: { toolName?: string }) => {
-      if (args.toolName === 'get_field_metadata') {
-        return Promise.resolve({ content: [{ type: 'text', text: '[]' }], isError: false });
-      }
-      return Promise.resolve({ content: [{ type: 'text', text: 'ok' }] });
-    });
+    const toolsCall = jest
+      .fn()
+      .mockImplementation((_method: string, args: { toolName?: string }) => {
+        if (args.toolName === 'get_field_metadata') {
+          return Promise.resolve({
+            content: [{ type: 'text', text: '[]' }],
+            isError: false,
+          });
+        }
+        return Promise.resolve({ content: [{ type: 'text', text: 'ok' }] });
+      });
     const client = { toolsCall } as unknown as TwentyMcpClient;
     const handlers = buildViewHandlers(client);
 
@@ -172,7 +211,9 @@ describe('metadataCreateViewFilter — operand validation', () => {
     });
 
     expect(result.isError).toBe(true);
-    expect((result.content[0] as { text: string }).text).toContain('field metadata lookup returned no rows');
+    expect((result.content[0] as { text: string }).text).toContain(
+      'field metadata lookup returned no rows',
+    );
     const createCalls = toolsCall.mock.calls.filter(
       (c) => (c[1] as { toolName: string })?.toolName === 'create_view_filter',
     );
@@ -192,7 +233,9 @@ describe('metadataUpdateViewFilter — operand validation', () => {
     });
 
     expect(result.isError).toBe(true);
-    expect((result.content[0] as { text: string }).text).toContain('requires fieldMetadataId');
+    expect((result.content[0] as { text: string }).text).toContain(
+      'requires fieldMetadataId',
+    );
     // No toolsCall should have been made at all
     expect(toolsCall).not.toHaveBeenCalled();
   });
@@ -235,9 +278,14 @@ describe('metadataUpdateViewFilter — operand validation', () => {
       (c) => (c[1] as { toolName: string })?.toolName === 'update_view_filter',
     );
     expect(updateCalls).toHaveLength(1);
-    const forwardedArgs = (updateCalls[0]?.[1] as { arguments: Record<string, unknown> })?.arguments ?? {};
+    const forwardedArgs =
+      (updateCalls[0]?.[1] as { arguments: Record<string, unknown> })
+        ?.arguments ?? {};
     expect(forwardedArgs).not.toHaveProperty('fieldMetadataId');
-    expect(forwardedArgs).toHaveProperty('id', '00000000-0000-0000-0000-000000000001');
+    expect(forwardedArgs).toHaveProperty(
+      'id',
+      '00000000-0000-0000-0000-000000000001',
+    );
     expect(forwardedArgs).toHaveProperty('operand', 'IS');
   });
 });
@@ -256,10 +304,22 @@ describe('FIELD_TYPE_OPERAND_MAP — matrix coverage', () => {
     // (kept in sync with the enum in views.ts; if new operands are added to the enum
     // without updating the map, this test will catch it via the specialCaseOperands check)
     const allKnownOperands = [
-      'IS', 'IS_NOT', 'IS_NOT_NULL', 'CONTAINS', 'DOES_NOT_CONTAIN',
-      'IS_EMPTY', 'IS_NOT_EMPTY', 'LESS_THAN_OR_EQUAL', 'GREATER_THAN_OR_EQUAL',
-      'IS_BEFORE', 'IS_AFTER', 'IS_RELATIVE', 'IS_IN_PAST', 'IS_IN_FUTURE',
-      'IS_TODAY', 'VECTOR_SEARCH',
+      'IS',
+      'IS_NOT',
+      'IS_NOT_NULL',
+      'CONTAINS',
+      'DOES_NOT_CONTAIN',
+      'IS_EMPTY',
+      'IS_NOT_EMPTY',
+      'LESS_THAN_OR_EQUAL',
+      'GREATER_THAN_OR_EQUAL',
+      'IS_BEFORE',
+      'IS_AFTER',
+      'IS_RELATIVE',
+      'IS_IN_PAST',
+      'IS_IN_FUTURE',
+      'IS_TODAY',
+      'VECTOR_SEARCH',
     ] as const;
 
     // Operands intentionally NOT in the matrix: IS_NOT_NULL has no field type
@@ -284,9 +344,9 @@ describe('FIELD_TYPE_OPERAND_MAP — matrix coverage', () => {
     if (uncovered.length > 0) {
       throw new Error(
         `The following ViewFilterOperand values are not covered by FIELD_TYPE_OPERAND_MAP ` +
-        `and are not in specialCaseOperands: [${uncovered.join(', ')}].\n` +
-        `Either add them to FIELD_TYPE_OPERAND_MAP for the appropriate field type(s) ` +
-        `or add them to specialCaseOperands with a comment explaining why they are not in the map.`,
+          `and are not in specialCaseOperands: [${uncovered.join(', ')}].\n` +
+          `Either add them to FIELD_TYPE_OPERAND_MAP for the appropriate field type(s) ` +
+          `or add them to specialCaseOperands with a comment explaining why they are not in the map.`,
       );
     }
   });

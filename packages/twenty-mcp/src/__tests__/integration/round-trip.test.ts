@@ -60,7 +60,9 @@ if (enabled && destructiveOk && !isLikelyLocalUrl(baseUrl)) {
  * Twenty's execute_tool wraps the inner result inside a JSON string under
  * content[0].text. Parse it so tests can assert on `success` / `result.id` etc.
  */
-const unwrap = (r: ToolsCallResult): { success: boolean; result?: any; message?: string } => {
+const unwrap = (
+  r: ToolsCallResult,
+): { success: boolean; result?: any; message?: string } => {
   const block = r.content[0];
   if (!block || block.type !== 'text' || typeof block.text !== 'string') {
     throw new Error('expected text block in tool result');
@@ -68,13 +70,16 @@ const unwrap = (r: ToolsCallResult): { success: boolean; result?: any; message?:
   try {
     return JSON.parse(block.text);
   } catch {
-    throw new Error(`could not parse Twenty response: ${block.text.slice(0, 200)}`);
+    throw new Error(
+      `could not parse Twenty response: ${block.text.slice(0, 200)}`,
+    );
   }
 };
 
 // Destructive describe blocks below ALSO check destructiveOk, in case the
 // suite is loaded with TWENTY_MCP_INTEGRATION=1 alone (read-only intent).
-const describeIfDestructive = enabled && destructiveOk ? describe : describe.skip;
+const describeIfDestructive =
+  enabled && destructiveOk ? describe : describe.skip;
 
 describeIfDestructive('integration: people CRUD round-trip', () => {
   if (enabled && destructiveOk && !apiKey) {
@@ -112,7 +117,8 @@ describeIfDestructive('integration: people CRUD round-trip', () => {
   });
 
   it('gets the person by id', async () => {
-    if (!createdId) throw new Error('createdId not set; create test must succeed first');
+    if (!createdId)
+      throw new Error('createdId not set; create test must succeed first');
     const r = unwrap(await crm.getRecord({ object: 'person', id: createdId }));
     expect(r.success).toBe(true);
     // Twenty's find_one_<sg> returns {result: {records: [<record>]}} — a wrapped
@@ -137,14 +143,20 @@ describeIfDestructive('integration: people CRUD round-trip', () => {
     // updated record). To verify the field was applied, follow up with a
     // separate find_one_<sg>.
     expect((r.result as { id?: string })?.id).toBe(createdId);
-    const verify = unwrap(await crm.getRecord({ object: 'person', id: createdId }));
-    const records = (verify.result as { records?: Array<{ jobTitle?: string }> })?.records;
+    const verify = unwrap(
+      await crm.getRecord({ object: 'person', id: createdId }),
+    );
+    const records = (
+      verify.result as { records?: Array<{ jobTitle?: string }> }
+    )?.records;
     expect(records?.[0]?.jobTitle).toBe('Audit Subject');
   });
 
   it('deletes the person', async () => {
     if (!createdId) throw new Error('createdId not set');
-    const r = unwrap(await crm.deleteRecord({ object: 'person', id: createdId }));
+    const r = unwrap(
+      await crm.deleteRecord({ object: 'person', id: createdId }),
+    );
     expect(r.success).toBe(true);
   });
 });
@@ -153,58 +165,69 @@ describeIfDestructive('integration: people CRUD round-trip', () => {
  * link_note_to_record verifies the GraphQL bypass works against a real Twenty.
  * If this passes, the workflow-gate workaround is genuinely effective.
  */
-describeIfDestructive('integration: link_note_to_record (GraphQL bypass)', () => {
-  if (enabled && destructiveOk && !apiKey) {
-    throw new Error('TWENTY_MCP_INTEGRATION=1 but TWENTY_API_KEY is not set');
-  }
+describeIfDestructive(
+  'integration: link_note_to_record (GraphQL bypass)',
+  () => {
+    if (enabled && destructiveOk && !apiKey) {
+      throw new Error('TWENTY_MCP_INTEGRATION=1 but TWENTY_API_KEY is not set');
+    }
 
-  const client = new TwentyMcpClient({ baseUrl, apiKey });
-  const crm = buildCrmHandlers(client);
-  const noteTargets = buildNoteTargetHandlers(client);
+    const client = new TwentyMcpClient({ baseUrl, apiKey });
+    const crm = buildCrmHandlers(client);
+    const noteTargets = buildNoteTargetHandlers(client);
 
-  let companyId: string | undefined;
-  let noteId: string | undefined;
-  const uniq = `mcp-link-${Date.now()}`;
+    let companyId: string | undefined;
+    let noteId: string | undefined;
+    const uniq = `mcp-link-${Date.now()}`;
 
-  it('creates a company', async () => {
-    const r = unwrap(
-      await crm.createRecord({
-        object: 'company',
-        data: { name: `MCP-Link-Co-${uniq}` },
-      }),
-    );
-    expect(r.success).toBe(true);
-    companyId = r.result.id as string;
-  });
+    it('creates a company', async () => {
+      const r = unwrap(
+        await crm.createRecord({
+          object: 'company',
+          data: { name: `MCP-Link-Co-${uniq}` },
+        }),
+      );
+      expect(r.success).toBe(true);
+      companyId = r.result.id as string;
+    });
 
-  it('creates a note (record-crud path — note is NOT isSystem so it works)', async () => {
-    const r = unwrap(
-      await crm.createRecord({
-        object: 'note',
-        data: { title: `Eval ${uniq}`, bodyV2: { markdown: 'integration test' } },
-      }),
-    );
-    expect(r.success).toBe(true);
-    noteId = r.result.id as string;
-  });
+    it('creates a note (record-crud path — note is NOT isSystem so it works)', async () => {
+      const r = unwrap(
+        await crm.createRecord({
+          object: 'note',
+          data: {
+            title: `Eval ${uniq}`,
+            bodyV2: { markdown: 'integration test' },
+          },
+        }),
+      );
+      expect(r.success).toBe(true);
+      noteId = r.result.id as string;
+    });
 
-  it('links the note to the company via the GraphQL bypass', async () => {
-    if (!noteId || !companyId) throw new Error('noteId / companyId not set');
-    const r = unwrap(
-      await noteTargets.linkNoteToRecord({ noteId, targetCompanyId: companyId }),
-    );
-    expect(r.success).toBe(true);
-    // result is the GraphQL response { createNoteTarget: {...} }
-    const noteTarget = (r.result as { createNoteTarget?: any }).createNoteTarget;
-    expect(noteTarget?.noteId).toBe(noteId);
-    expect(noteTarget?.targetCompanyId).toBe(companyId);
-  });
+    it('links the note to the company via the GraphQL bypass', async () => {
+      if (!noteId || !companyId) throw new Error('noteId / companyId not set');
+      const r = unwrap(
+        await noteTargets.linkNoteToRecord({
+          noteId,
+          targetCompanyId: companyId,
+        }),
+      );
+      expect(r.success).toBe(true);
+      // result is the GraphQL response { createNoteTarget: {...} }
+      const noteTarget = (r.result as { createNoteTarget?: any })
+        .createNoteTarget;
+      expect(noteTarget?.noteId).toBe(noteId);
+      expect(noteTarget?.targetCompanyId).toBe(companyId);
+    });
 
-  it('cleanup: delete the company and note', async () => {
-    if (companyId) await crm.deleteRecord({ object: 'company', id: companyId });
-    if (noteId) await crm.deleteRecord({ object: 'note', id: noteId });
-  });
-});
+    it('cleanup: delete the company and note', async () => {
+      if (companyId)
+        await crm.deleteRecord({ object: 'company', id: companyId });
+      if (noteId) await crm.deleteRecord({ object: 'note', id: noteId });
+    });
+  },
+);
 
 /**
  * Operand validation rejection test.
@@ -212,102 +235,141 @@ describeIfDestructive('integration: link_note_to_record (GraphQL bypass)', () =>
  * This test is deliberately non-destructive: the bad filter is rejected by the
  * wrapper layer and never written to Twenty.
  *
- * The DATE_TIME field id is discovered dynamically in beforeAll via
- * metadata_query({kind: 'fields'}) — no hardcoded workspace-scoped UUID.
- * Any workspace with default stock data (createdAt on any object) will work.
- * Assumes limit=200 is sufficient (stock workspace has far fewer than 200 fields).
+ * The DATE_TIME field id is discovered dynamically in beforeAll via a focused
+ * two-step query: first fetch the 'company' object id, then fetch only company
+ * fields (objectMetadataId-filtered). This eliminates the page-boundary risk of
+ * a hard limit=200 cap: company has far fewer than 200 fields and the list will
+ * never be truncated. Any workspace with a default 'company' object will work.
  */
-describeIfDestructive('integration: operand validation — invalid operand rejected before reaching Twenty', () => {
-  if (enabled && destructiveOk && !apiKey) {
-    throw new Error('TWENTY_MCP_INTEGRATION=1 but TWENTY_API_KEY is not set');
-  }
-
-  const client = new TwentyMcpClient({ baseUrl, apiKey });
-  // Use a non-existent viewId — the validation fails before it's needed
-  const FAKE_VIEW_ID = '00000000-0000-0000-0000-000000000000';
-
-  // Discovered dynamically in beforeAll — no hardcoded UUID.
-  let DATE_TIME_FIELD_ID: string;
-
-  beforeAll(async () => {
-    if (!enabled || !destructiveOk) return;
-    const metadata = buildMetadataHandlers(client, apiKey);
-    const result = await metadata.metadataQuery({ kind: 'fields', args: { limit: 200 } });
-    const text = (result.content[0] as { type: 'text'; text: string }).text;
-    const fields = parseInnerOrGraphqlArray<{ id: string; type: string }>(text);
-    const dateTimeField = fields.find((f) => f.type === 'DATE_TIME');
-    if (!dateTimeField) {
-      // Disambiguate "stock data missing" from "API shape changed" — the parsed shape
-      // is included so a future shape drift produces a clearer signal than a misleading
-      // "reseed" instruction.
-      const raw: unknown = JSON.parse(text);
-      const shape = Array.isArray(raw)
-        ? `array of ${raw.length}`
-        : `top-level object with keys [${Object.keys(raw as object).join(', ')}]`;
-      throw new Error(
-        `round-trip.test: no DATE_TIME field found in workspace (parsed: ${shape}). ` +
-          `Either reseed stock data, OR investigate response-shape drift.`,
-      );
+describeIfDestructive(
+  'integration: operand validation — invalid operand rejected before reaching Twenty',
+  () => {
+    if (enabled && destructiveOk && !apiKey) {
+      throw new Error('TWENTY_MCP_INTEGRATION=1 but TWENTY_API_KEY is not set');
     }
-    DATE_TIME_FIELD_ID = dateTimeField.id;
-  });
 
-  it('apply_plan CREATE_VIEW_FILTER with GREATER_THAN_OR_EQUAL on DATE_TIME is rejected by the proxy (never reaches Twenty)', async () => {
-    const metadata = buildMetadataHandlers(client, apiKey);
+    const client = new TwentyMcpClient({ baseUrl, apiKey });
+    // Use a non-existent viewId — the validation fails before it's needed
+    const FAKE_VIEW_ID = '00000000-0000-0000-0000-000000000000';
 
-    const result = await metadata.metadataApplyPlan({
-      mutations: [
-        {
-          key: 'test_invalid_operand',
-          op: 'CREATE_VIEW_FILTER',
-          args: {
-            viewId: FAKE_VIEW_ID,
-            fieldMetadataId: DATE_TIME_FIELD_ID,
-            operand: 'GREATER_THAN_OR_EQUAL',
-            value: '2026-01-01T00:00:00.000Z',
+    // Discovered dynamically in beforeAll — no hardcoded UUID.
+    let DATE_TIME_FIELD_ID: string;
+
+    beforeAll(async () => {
+      if (!enabled || !destructiveOk) return;
+      const metadata = buildMetadataHandlers(client, apiKey);
+
+      // Step 1: find the 'company' object id (focused — never paginated).
+      const objectsResult = await metadata.metadataQuery({
+        kind: 'objects',
+        args: { limit: 50 },
+      });
+      const objectsText = (
+        objectsResult.content[0] as { type: 'text'; text: string }
+      ).text;
+      const objects = parseInnerOrGraphqlArray<{
+        id: string;
+        nameSingular: string;
+      }>(objectsText);
+      const companyObject = objects.find((o) => o.nameSingular === 'company');
+      if (!companyObject) {
+        throw new Error(
+          'round-trip.test: no "company" object found in workspace metadata. ' +
+            'Ensure the local Twenty stack has stock data (default workspace).',
+        );
+      }
+
+      // Step 2: fetch ONLY company fields (objectMetadataId-filtered).
+      // A focused object always has far fewer than 200 fields — no page-boundary risk.
+      const fieldsResult = await metadata.metadataQuery({
+        kind: 'fields',
+        args: { objectMetadataId: companyObject.id },
+      });
+      const fieldsText = (
+        fieldsResult.content[0] as { type: 'text'; text: string }
+      ).text;
+      const fields = parseInnerOrGraphqlArray<{ id: string; type: string }>(
+        fieldsText,
+      );
+      const dateTimeField = fields.find((f) => f.type === 'DATE_TIME');
+      if (!dateTimeField) {
+        // Disambiguate "stock data missing" from "API shape changed" — the parsed shape
+        // is included so a future shape drift produces a clearer signal than a misleading
+        // "reseed" instruction.
+        const raw: unknown = JSON.parse(fieldsText);
+        const shape = Array.isArray(raw)
+          ? `array of ${raw.length}`
+          : `top-level object with keys [${Object.keys(raw as object).join(', ')}]`;
+        throw new Error(
+          `round-trip.test: no DATE_TIME field found on company object (parsed: ${shape}). ` +
+            `Either reseed stock data, OR investigate response-shape drift.`,
+        );
+      }
+      DATE_TIME_FIELD_ID = dateTimeField.id;
+    });
+
+    it('apply_plan CREATE_VIEW_FILTER with GREATER_THAN_OR_EQUAL on DATE_TIME is rejected by the proxy (never reaches Twenty)', async () => {
+      const metadata = buildMetadataHandlers(client, apiKey);
+
+      const result = await metadata.metadataApplyPlan({
+        mutations: [
+          {
+            key: 'test_invalid_operand',
+            op: 'CREATE_VIEW_FILTER',
+            args: {
+              viewId: FAKE_VIEW_ID,
+              fieldMetadataId: DATE_TIME_FIELD_ID,
+              operand: 'GREATER_THAN_OR_EQUAL',
+              value: '2026-01-01T00:00:00.000Z',
+            },
           },
-        },
-      ],
+        ],
+      });
+
+      const parsed = JSON.parse(
+        (result.content[0] as { type: 'text'; text: string }).text,
+      ) as {
+        totalMutations: number;
+        applied: Array<{ key: string }>;
+        failed: { op: string; error: string } | null;
+      };
+
+      // The plan fails at the first (only) mutation
+      expect(parsed.totalMutations).toBe(1);
+      expect(parsed.applied).toHaveLength(0);
+      expect(parsed.failed?.op).toBe('CREATE_VIEW_FILTER');
+      expect(parsed.failed?.error).toMatch(
+        /Operand GREATER_THAN_OR_EQUAL is not valid for DATE_TIME/,
+      );
+      // result.isError should be true since failed is non-null
+      expect(result.isError).toBe(true);
+
+      // Independent verification: query Twenty's view_filters and assert no row
+      // landed with the bad operand on the DATE_TIME field. Without this step, a
+      // future regression that bypasses the wrapper's rejection would still pass
+      // the assertions above (Twenty would also reject — with a different error).
+      // Uses parseInnerOrGraphqlArray so the verification is non-vacuous regardless
+      // of whether view_filters routes through inner_tool or graphql transport.
+      const viewFiltersResult = await metadata.metadataQuery({
+        kind: 'view_filters',
+        args: { limit: 200 },
+      });
+      const viewFiltersText = (
+        viewFiltersResult.content[0] as { type: 'text'; text: string }
+      ).text;
+      const viewFilterRows = parseInnerOrGraphqlArray<{
+        fieldMetadataId?: string;
+        operand?: string;
+      }>(viewFiltersText);
+      const leakedRows = viewFilterRows.filter(
+        (row) =>
+          row.fieldMetadataId === DATE_TIME_FIELD_ID &&
+          row.operand === 'GREATER_THAN_OR_EQUAL',
+      );
+      expect(leakedRows).toEqual([]);
     });
-
-    const parsed = JSON.parse(
-      (result.content[0] as { type: 'text'; text: string }).text,
-    ) as {
-      totalMutations: number;
-      applied: Array<{ key: string }>;
-      failed: { op: string; error: string } | null;
-    };
-
-    // The plan fails at the first (only) mutation
-    expect(parsed.totalMutations).toBe(1);
-    expect(parsed.applied).toHaveLength(0);
-    expect(parsed.failed?.op).toBe('CREATE_VIEW_FILTER');
-    expect(parsed.failed?.error).toMatch(/Operand GREATER_THAN_OR_EQUAL is not valid for DATE_TIME/);
-    // result.isError should be true since failed is non-null
-    expect(result.isError).toBe(true);
-
-    // Independent verification: query Twenty's view_filters and assert no row
-    // landed with the bad operand on the DATE_TIME field. Without this step, a
-    // future regression that bypasses the wrapper's rejection would still pass
-    // the assertions above (Twenty would also reject — with a different error).
-    // Uses parseInnerOrGraphqlArray so the verification is non-vacuous regardless
-    // of whether view_filters routes through inner_tool or graphql transport.
-    const viewFiltersResult = await metadata.metadataQuery({
-      kind: 'view_filters',
-      args: { limit: 200 },
-    });
-    const viewFiltersText = (viewFiltersResult.content[0] as { type: 'text'; text: string }).text;
-    const viewFilterRows = parseInnerOrGraphqlArray<{
-      fieldMetadataId?: string;
-      operand?: string;
-    }>(viewFiltersText);
-    const leakedRows = viewFilterRows.filter(
-      (row) =>
-        row.fieldMetadataId === DATE_TIME_FIELD_ID && row.operand === 'GREATER_THAN_OR_EQUAL',
-    );
-    expect(leakedRows).toEqual([]);
-  });
-});
+  },
+);
 
 /**
  * Multi-word custom object CRUD — issue #11.
@@ -316,155 +378,193 @@ describeIfDestructive('integration: operand validation — invalid operand rejec
  * camelCase-aware normalize() correctly routes to the server's camelToSnakeCase-
  * registered inner tools (find_mcp_audit_fixtures, not find_mcpauditfixtures).
  */
-describeIfDestructive('integration: multi-word custom object CRUD (issue #11)', () => {
-  if (enabled && destructiveOk && !apiKey) {
-    throw new Error('TWENTY_MCP_INTEGRATION=1 but TWENTY_API_KEY is not set');
-  }
-
-  const client = new TwentyMcpClient({ baseUrl, apiKey });
-  const objNameSingular = 'mcpAuditFixture'; // 2-word camelCase — provably exercises the bug
-  const objNamePlural = 'mcpAuditFixtures';
-  let objectMetadataId: string | undefined;
-  let createdRecordId: string | undefined;
-
-  const metadata = buildMetadataHandlers(client, apiKey);
-  const crm = buildCrmHandlers(client);
-
-  beforeAll(async () => {
-    if (!enabled || !destructiveOk) return;
-    // Defensive cleanup: if a prior test run crashed before afterAll, the
-    // mcpAuditFixture object may still exist on the workspace. Query first,
-    // delete if found, then create fresh. This keeps the test idempotent
-    // across re-runs without requiring a manual `docker compose down -v`.
-    const existing = await metadata.metadataQuery({
-      kind: 'objects',
-      args: { limit: 200 },
-    });
-    const existingText = (existing.content[0] as { type: 'text'; text: string }).text;
-    const existingObjects = parseInnerOrGraphqlArray<{ id: string; nameSingular: string }>(
-      existingText,
-    );
-    const stale = existingObjects.find((o) => o.nameSingular === objNameSingular);
-    if (stale) {
-      // metadata_apply_plan does NOT support DELETE_OBJECT — use a direct
-      // GraphQL mutation on the /metadata endpoint instead. This is the only
-      // mechanism Twenty currently exposes for hard-deleting object metadata.
-      await client.graphqlMutation(
-        'mutation DeleteObject($input: DeleteOneObjectInput!) { deleteOneObject(input: $input) { id } }',
-        { input: { id: stale.id } },
-        'metadata',
-      );
+describeIfDestructive(
+  'integration: multi-word custom object CRUD (issue #11)',
+  () => {
+    if (enabled && destructiveOk && !apiKey) {
+      throw new Error('TWENTY_MCP_INTEGRATION=1 but TWENTY_API_KEY is not set');
     }
 
-    // Bootstrap the test fixture: create a 2-word custom object via apply_plan.
-    const result = await metadata.metadataApplyPlan({
-      mutations: [
-        {
-          key: 'create_mcp_audit_fixture',
-          op: 'CREATE_OBJECT',
-          args: {
-            nameSingular: objNameSingular,
-            namePlural: objNamePlural,
-            labelSingular: 'MCP Audit Fixture',
-            labelPlural: 'MCP Audit Fixtures',
-            icon: 'IconTestPipe',
-            description: 'Temporary fixture for issue #11 integration test. Safe to delete.',
+    const client = new TwentyMcpClient({ baseUrl, apiKey });
+    const objNameSingular = 'mcpAuditFixture'; // 2-word camelCase — provably exercises the bug
+    const objNamePlural = 'mcpAuditFixtures';
+    let objectMetadataId: string | undefined;
+    let createdRecordId: string | undefined;
+
+    const metadata = buildMetadataHandlers(client, apiKey);
+    const crm = buildCrmHandlers(client);
+
+    beforeAll(async () => {
+      if (!enabled || !destructiveOk) return;
+      // Defensive cleanup: if a prior test run crashed before afterAll, the
+      // mcpAuditFixture object may still exist on the workspace. Query first,
+      // delete if found, then create fresh. This keeps the test idempotent
+      // across re-runs without requiring a manual `docker compose down -v`.
+      const existing = await metadata.metadataQuery({
+        kind: 'objects',
+        args: { limit: 200 },
+      });
+      const existingText = (
+        existing.content[0] as { type: 'text'; text: string }
+      ).text;
+      const existingObjects = parseInnerOrGraphqlArray<{
+        id: string;
+        nameSingular: string;
+      }>(existingText);
+      const stale = existingObjects.find(
+        (o) => o.nameSingular === objNameSingular,
+      );
+      if (stale) {
+        // metadata_apply_plan does NOT support DELETE_OBJECT — use a direct
+        // GraphQL mutation on the /metadata endpoint instead. This is the only
+        // mechanism Twenty currently exposes for hard-deleting object metadata.
+        await client.graphqlMutation(
+          'mutation DeleteObject($input: DeleteOneObjectInput!) { deleteOneObject(input: $input) { id } }',
+          { input: { id: stale.id } },
+          'metadata',
+        );
+      }
+
+      // Bootstrap the test fixture: create a 2-word custom object via apply_plan.
+      const result = await metadata.metadataApplyPlan({
+        mutations: [
+          {
+            key: 'create_mcp_audit_fixture',
+            op: 'CREATE_OBJECT',
+            args: {
+              nameSingular: objNameSingular,
+              namePlural: objNamePlural,
+              labelSingular: 'MCP Audit Fixture',
+              labelPlural: 'MCP Audit Fixtures',
+              icon: 'IconTestPipe',
+              description:
+                'Temporary fixture for issue #11 integration test. Safe to delete.',
+            },
           },
-        },
-      ],
+        ],
+      });
+      const parsed = JSON.parse(
+        (result.content[0] as { type: 'text'; text: string }).text,
+      );
+      if (parsed.failed) {
+        throw new Error(
+          `round-trip.test: failed to bootstrap mcpAuditFixture object: ${JSON.stringify(parsed.failed)}. ` +
+            `If a stale fixture exists despite the defensive cleanup above, investigate manually via ` +
+            `metadata_query({kind:'objects'}) and the deleteOneObject GraphQL mutation.`,
+        );
+      }
+      // apply_plan wraps each mutation's result: the inner-tool response is itself
+      // an MCP ToolsCallResult ({content: [{type:'text', text: '<JSON>'}], isError}).
+      // Extract the actual created-object payload from that nested text field.
+      const appliedEntry = parsed.applied?.[0]?.result as
+        | { content?: Array<{ type: string; text: string }>; isError?: boolean }
+        | undefined;
+      const innerText = appliedEntry?.content?.[0]?.text;
+      if (!innerText) {
+        throw new Error(
+          `round-trip.test: CREATE_OBJECT applied entry has no inner text. Got: ${JSON.stringify(parsed.applied?.[0])}`,
+        );
+      }
+      const innerObject = JSON.parse(innerText) as { id?: string };
+      objectMetadataId = innerObject.id;
+      if (!objectMetadataId) {
+        throw new Error(
+          `round-trip.test: CREATE_OBJECT succeeded but no objectMetadataId returned. Inner payload: ${innerText}`,
+        );
+      }
     });
-    const parsed = JSON.parse((result.content[0] as { type: 'text'; text: string }).text);
-    if (parsed.failed) {
-      throw new Error(
-        `round-trip.test: failed to bootstrap mcpAuditFixture object: ${JSON.stringify(parsed.failed)}. ` +
-          `If a stale fixture exists despite the defensive cleanup above, investigate manually via ` +
-          `metadata_query({kind:'objects'}) and the deleteOneObject GraphQL mutation.`,
-      );
-    }
-    // apply_plan wraps each mutation's result: the inner-tool response is itself
-    // an MCP ToolsCallResult ({content: [{type:'text', text: '<JSON>'}], isError}).
-    // Extract the actual created-object payload from that nested text field.
-    const appliedEntry = parsed.applied?.[0]?.result as
-      | { content?: Array<{ type: string; text: string }>; isError?: boolean }
-      | undefined;
-    const innerText = appliedEntry?.content?.[0]?.text;
-    if (!innerText) {
-      throw new Error(
-        `round-trip.test: CREATE_OBJECT applied entry has no inner text. Got: ${JSON.stringify(parsed.applied?.[0])}`,
-      );
-    }
-    const innerObject = JSON.parse(innerText) as { id?: string };
-    objectMetadataId = innerObject.id;
-    if (!objectMetadataId) {
-      throw new Error(
-        `round-trip.test: CREATE_OBJECT succeeded but no objectMetadataId returned. Inner payload: ${innerText}`,
-      );
-    }
-  });
 
-  afterAll(async () => {
-    // Cleanup: delete the fixture object so the workspace returns to its pre-test state.
-    // metadata_apply_plan does NOT support DELETE_OBJECT (apply_plan is build-up only,
-    // not teardown). Use a direct GraphQL mutation on the /metadata endpoint.
-    if (objectMetadataId) {
-      await client.graphqlMutation(
-        'mutation DeleteObject($input: DeleteOneObjectInput!) { deleteOneObject(input: $input) { id } }',
-        { input: { id: objectMetadataId } },
-        'metadata',
-      );
-    }
-  });
-
-  it('search_records on multi-word object name routes to find_mcp_audit_fixtures (NOT find_mcpauditfixtures)', async () => {
-    const result = await crm.searchRecords({ object: objNamePlural, limit: 5 });
-    const parsed = JSON.parse((result.content[0] as { type: 'text'; text: string }).text);
-    expect(parsed.success).toBe(true);
-    // Before-fix failure mode: "Tool \"find_mcpauditfixtures\" not found"
-    // After-fix: success with an empty result set on a fresh object.
-  });
-
-  it('create_record on multi-word object name routes to create_mcp_audit_fixture', async () => {
-    // Twenty auto-creates a `name` field on every custom object; we write to that.
-    const result = await crm.createRecord({
-      object: objNameSingular,
-      data: { name: 'issue-11-test-row' },
+    afterAll(async () => {
+      // Cleanup: delete the fixture object so the workspace returns to its pre-test state.
+      // metadata_apply_plan does NOT support DELETE_OBJECT (apply_plan is build-up only,
+      // not teardown). Use a direct GraphQL mutation on the /metadata endpoint.
+      if (objectMetadataId) {
+        await client.graphqlMutation(
+          'mutation DeleteObject($input: DeleteOneObjectInput!) { deleteOneObject(input: $input) { id } }',
+          { input: { id: objectMetadataId } },
+          'metadata',
+        );
+      }
     });
-    const parsed = JSON.parse((result.content[0] as { type: 'text'; text: string }).text);
-    expect(parsed.success).toBe(true);
-    expect(parsed.result?.id).toBeTruthy();
-    createdRecordId = parsed.result.id as string;
-  });
 
-  it('get_record on multi-word object name routes to find_one_mcp_audit_fixture', async () => {
-    if (!createdRecordId) throw new Error('createdRecordId not set — create test must precede');
-    const result = await crm.getRecord({ object: objNameSingular, id: createdRecordId });
-    const parsed = JSON.parse((result.content[0] as { type: 'text'; text: string }).text);
-    expect(parsed.success).toBe(true);
-    const record = (parsed.result as { records?: Array<{ id: string }> })?.records?.[0];
-    expect(record?.id).toBe(createdRecordId);
-  });
-
-  it('update_record on multi-word object name routes to update_mcp_audit_fixture', async () => {
-    if (!createdRecordId) throw new Error('createdRecordId not set');
-    const result = await crm.updateRecord({
-      object: objNameSingular,
-      id: createdRecordId,
-      data: { name: 'issue-11-test-row-updated' },
+    it('search_records on multi-word object name routes to find_mcp_audit_fixtures (NOT find_mcpauditfixtures)', async () => {
+      const result = await crm.searchRecords({
+        object: objNamePlural,
+        limit: 5,
+      });
+      const parsed = JSON.parse(
+        (result.content[0] as { type: 'text'; text: string }).text,
+      );
+      expect(parsed.success).toBe(true);
+      // Before-fix failure mode: "Tool \"find_mcpauditfixtures\" not found"
+      // After-fix: success with an empty result set on a fresh object.
     });
-    const parsed = JSON.parse((result.content[0] as { type: 'text'; text: string }).text);
-    expect(parsed.success).toBe(true);
-  });
 
-  it('delete_record on multi-word object name routes to delete_mcp_audit_fixture', async () => {
-    if (!createdRecordId) throw new Error('createdRecordId not set');
-    const result = await crm.deleteRecord({ object: objNameSingular, id: createdRecordId });
-    const parsed = JSON.parse((result.content[0] as { type: 'text'; text: string }).text);
-    expect(parsed.success).toBe(true);
-  });
+    it('create_record on multi-word object name routes to create_mcp_audit_fixture', async () => {
+      // Twenty auto-creates a `name` field on every custom object; we write to that.
+      const result = await crm.createRecord({
+        object: objNameSingular,
+        data: { name: 'issue-11-test-row' },
+      });
+      const parsed = JSON.parse(
+        (result.content[0] as { type: 'text'; text: string }).text,
+      );
+      expect(parsed.success).toBe(true);
+      expect(parsed.result?.id).toBeTruthy();
+      createdRecordId = parsed.result.id as string;
+    });
 
-  it('also routes for singular-form input → search converts to plural correctly', async () => {
-    const result = await crm.searchRecords({ object: objNameSingular, limit: 5 });
-    const parsed = JSON.parse((result.content[0] as { type: 'text'; text: string }).text);
-    expect(parsed.success).toBe(true); // wrapper pluralizes 'mcpAuditFixture' → find_mcp_audit_fixtures
-  });
-});
+    it('get_record on multi-word object name routes to find_one_mcp_audit_fixture', async () => {
+      if (!createdRecordId)
+        throw new Error('createdRecordId not set — create test must precede');
+      const result = await crm.getRecord({
+        object: objNameSingular,
+        id: createdRecordId,
+      });
+      const parsed = JSON.parse(
+        (result.content[0] as { type: 'text'; text: string }).text,
+      );
+      expect(parsed.success).toBe(true);
+      const record = (parsed.result as { records?: Array<{ id: string }> })
+        ?.records?.[0];
+      expect(record?.id).toBe(createdRecordId);
+    });
+
+    it('update_record on multi-word object name routes to update_mcp_audit_fixture', async () => {
+      if (!createdRecordId) throw new Error('createdRecordId not set');
+      const result = await crm.updateRecord({
+        object: objNameSingular,
+        id: createdRecordId,
+        data: { name: 'issue-11-test-row-updated' },
+      });
+      const parsed = JSON.parse(
+        (result.content[0] as { type: 'text'; text: string }).text,
+      );
+      expect(parsed.success).toBe(true);
+    });
+
+    it('delete_record on multi-word object name routes to delete_mcp_audit_fixture', async () => {
+      if (!createdRecordId) throw new Error('createdRecordId not set');
+      const result = await crm.deleteRecord({
+        object: objNameSingular,
+        id: createdRecordId,
+      });
+      const parsed = JSON.parse(
+        (result.content[0] as { type: 'text'; text: string }).text,
+      );
+      expect(parsed.success).toBe(true);
+    });
+
+    it('also routes for singular-form input → search converts to plural correctly', async () => {
+      const result = await crm.searchRecords({
+        object: objNameSingular,
+        limit: 5,
+      });
+      const parsed = JSON.parse(
+        (result.content[0] as { type: 'text'; text: string }).text,
+      );
+      expect(parsed.success).toBe(true); // resolveObjectNames resolves 'mcpAuditFixture' → find_mcp_audit_fixtures
+    });
+  },
+);
+

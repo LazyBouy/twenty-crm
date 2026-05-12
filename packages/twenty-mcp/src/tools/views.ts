@@ -45,13 +45,51 @@ export const FIELD_TYPE_OPERAND_MAP: Record<string, readonly string[]> = {
   ADDRESS: ['CONTAINS', 'DOES_NOT_CONTAIN', 'IS_EMPTY', 'IS_NOT_EMPTY'],
   LINKS: ['CONTAINS', 'DOES_NOT_CONTAIN', 'IS_EMPTY', 'IS_NOT_EMPTY'],
   PHONES: ['CONTAINS', 'DOES_NOT_CONTAIN', 'IS_EMPTY', 'IS_NOT_EMPTY'],
-  CURRENCY: ['GREATER_THAN_OR_EQUAL', 'LESS_THAN_OR_EQUAL', 'IS_EMPTY', 'IS_NOT_EMPTY'],
-  NUMBER: ['IS', 'IS_NOT', 'GREATER_THAN_OR_EQUAL', 'LESS_THAN_OR_EQUAL', 'IS_EMPTY', 'IS_NOT_EMPTY'],
+  CURRENCY: [
+    'GREATER_THAN_OR_EQUAL',
+    'LESS_THAN_OR_EQUAL',
+    'IS_EMPTY',
+    'IS_NOT_EMPTY',
+  ],
+  NUMBER: [
+    'IS',
+    'IS_NOT',
+    'GREATER_THAN_OR_EQUAL',
+    'LESS_THAN_OR_EQUAL',
+    'IS_EMPTY',
+    'IS_NOT_EMPTY',
+  ],
   RAW_JSON: ['CONTAINS', 'DOES_NOT_CONTAIN', 'IS_EMPTY', 'IS_NOT_EMPTY'],
   FILES: ['CONTAINS', 'DOES_NOT_CONTAIN', 'IS_EMPTY', 'IS_NOT_EMPTY'],
-  DATE_TIME: ['IS', 'IS_RELATIVE', 'IS_IN_PAST', 'IS_IN_FUTURE', 'IS_TODAY', 'IS_BEFORE', 'IS_AFTER', 'IS_EMPTY', 'IS_NOT_EMPTY'],
-  DATE: ['IS', 'IS_RELATIVE', 'IS_IN_PAST', 'IS_IN_FUTURE', 'IS_TODAY', 'IS_BEFORE', 'IS_AFTER', 'IS_EMPTY', 'IS_NOT_EMPTY'],
-  RATING: ['IS', 'GREATER_THAN_OR_EQUAL', 'LESS_THAN_OR_EQUAL', 'IS_EMPTY', 'IS_NOT_EMPTY'],
+  DATE_TIME: [
+    'IS',
+    'IS_RELATIVE',
+    'IS_IN_PAST',
+    'IS_IN_FUTURE',
+    'IS_TODAY',
+    'IS_BEFORE',
+    'IS_AFTER',
+    'IS_EMPTY',
+    'IS_NOT_EMPTY',
+  ],
+  DATE: [
+    'IS',
+    'IS_RELATIVE',
+    'IS_IN_PAST',
+    'IS_IN_FUTURE',
+    'IS_TODAY',
+    'IS_BEFORE',
+    'IS_AFTER',
+    'IS_EMPTY',
+    'IS_NOT_EMPTY',
+  ],
+  RATING: [
+    'IS',
+    'GREATER_THAN_OR_EQUAL',
+    'LESS_THAN_OR_EQUAL',
+    'IS_EMPTY',
+    'IS_NOT_EMPTY',
+  ],
   RELATION: ['IS', 'IS_NOT', 'IS_EMPTY', 'IS_NOT_EMPTY'],
   MULTI_SELECT: ['CONTAINS', 'DOES_NOT_CONTAIN', 'IS_EMPTY', 'IS_NOT_EMPTY'],
   SELECT: ['IS', 'IS_NOT', 'IS_EMPTY', 'IS_NOT_EMPTY'],
@@ -97,26 +135,40 @@ export const assertOperandCompatible = async (
     arguments: { id: fieldMetadataId },
   });
 
-  const text = (result.content[0] as { type: string; text?: string } | undefined)?.text;
+  const text = (
+    result.content[0] as { type: string; text?: string } | undefined
+  )?.text;
   if (!text) {
-    return { valid: false, error: `field metadata lookup returned no text block for fieldMetadataId ${fieldMetadataId}` };
+    return {
+      valid: false,
+      error: `field metadata lookup returned no text block for fieldMetadataId ${fieldMetadataId}`,
+    };
   }
 
   let parsed: Array<{ type?: string; id?: string }>;
   try {
     parsed = JSON.parse(text) as Array<{ type?: string; id?: string }>;
   } catch {
-    return { valid: false, error: `field metadata lookup returned non-JSON for fieldMetadataId ${fieldMetadataId}` };
+    return {
+      valid: false,
+      error: `field metadata lookup returned non-JSON for fieldMetadataId ${fieldMetadataId}`,
+    };
   }
 
   // FAIL CLOSED: empty array means the field wasn't found.
   if (!Array.isArray(parsed) || parsed.length === 0) {
-    return { valid: false, error: `field metadata lookup returned no rows for fieldMetadataId ${fieldMetadataId}` };
+    return {
+      valid: false,
+      error: `field metadata lookup returned no rows for fieldMetadataId ${fieldMetadataId}`,
+    };
   }
 
   const fieldType = parsed[0]?.type;
   if (!fieldType) {
-    return { valid: false, error: `field metadata lookup returned a row with no type for fieldMetadataId ${fieldMetadataId}` };
+    return {
+      valid: false,
+      error: `field metadata lookup returned a row with no type for fieldMetadataId ${fieldMetadataId}`,
+    };
   }
 
   const allowedOperands = FIELD_TYPE_OPERAND_MAP[fieldType];
@@ -126,7 +178,7 @@ export const assertOperandCompatible = async (
     // validated; this only fires for genuinely new field types not yet in twenty-front.
     console.warn(
       `[assertOperandCompatible] unknown field type "${fieldType}" for fieldMetadataId ${fieldMetadataId} — failing open (no validation). ` +
-      `Update FIELD_TYPE_OPERAND_MAP in views.ts to add coverage for this type.`,
+        `Update FIELD_TYPE_OPERAND_MAP in views.ts to add coverage for this type.`,
     );
 
     return { valid: true, unknownType: true };
@@ -208,7 +260,9 @@ export const metadataCreateViewInputSchema = z.object({
   objectNameSingular: z
     .string()
     .min(1)
-    .describe('Singular humanised object name, e.g. "company". The factory resolves it to objectMetadataId internally.'),
+    .describe(
+      'Singular humanised object name, e.g. "company". The factory resolves it to objectMetadataId internally.',
+    ),
   visibility: ViewVisibility.describe(
     'WORKSPACE = visible to all members; UNLISTED = per-user (private). REQUIRED — Twenty defaults to WORKSPACE; the proxy forces an explicit choice.',
   ),
@@ -217,14 +271,20 @@ export const metadataCreateViewInputSchema = z.object({
   mainGroupByFieldName: z
     .string()
     .optional()
-    .describe('SELECT field name for kanban grouping. Required if type=KANBAN.'),
+    .describe(
+      'SELECT field name for kanban grouping. Required if type=KANBAN.',
+    ),
   kanbanAggregateOperation: KanbanAggregateOperation.optional(),
   kanbanAggregateOperationFieldName: z.string().optional(),
-  calendarLayout: CalendarLayout.optional().describe('Required if type=CALENDAR.'),
+  calendarLayout: CalendarLayout.optional().describe(
+    'Required if type=CALENDAR.',
+  ),
   calendarFieldName: z
     .string()
     .optional()
-    .describe('DATE/DATE_TIME field name for calendar views. Required if type=CALENDAR.'),
+    .describe(
+      'DATE/DATE_TIME field name for calendar views. Required if type=CALENDAR.',
+    ),
   fieldNames: z
     .array(z.string())
     .optional()
@@ -239,10 +299,23 @@ export const metadataUpdateViewInputSchema = z.object({
 
 export const metadataCreateViewFieldInputSchema = z.object({
   viewId: z.string().uuid(),
-  fieldMetadataId: z.string().uuid().describe('Field id (UUID), not field name.'),
+  fieldMetadataId: z
+    .string()
+    .uuid()
+    .describe('Field id (UUID), not field name.'),
   isVisible: z.boolean().optional().describe('Defaults true.'),
-  size: z.number().int().positive().optional().describe('Column width in pixels. Defaults 150.'),
-  position: z.number().int().min(0).optional().describe('0-based column position. Defaults 0.'),
+  size: z
+    .number()
+    .int()
+    .positive()
+    .optional()
+    .describe('Column width in pixels. Defaults 150.'),
+  position: z
+    .number()
+    .int()
+    .min(0)
+    .optional()
+    .describe('0-based column position. Defaults 0.'),
   aggregateOperation: AggregateOperation.optional(),
 });
 
@@ -280,7 +353,9 @@ export const metadataCreateViewFilterInputSchema = z.object({
   subFieldName: z
     .string()
     .optional()
-    .describe('For composite fields: e.g. "amountMicros" for CURRENCY, "addressCity" for ADDRESS.'),
+    .describe(
+      'For composite fields: e.g. "amountMicros" for CURRENCY, "addressCity" for ADDRESS.',
+    ),
 });
 
 export const metadataUpdateViewFilterInputSchema = z.object({
@@ -340,19 +415,27 @@ export const buildViewHandlers = (client: TwentyMcpClient) => ({
   metadataUpdateView: (args: z.infer<typeof metadataUpdateViewInputSchema>) =>
     wrapInExecute(client, 'update_view', args),
 
-  metadataCreateViewField: (args: z.infer<typeof metadataCreateViewFieldInputSchema>) =>
-    wrapInExecute(client, 'create_view_field', args),
+  metadataCreateViewField: (
+    args: z.infer<typeof metadataCreateViewFieldInputSchema>,
+  ) => wrapInExecute(client, 'create_view_field', args),
 
-  metadataUpdateViewField: (args: z.infer<typeof metadataUpdateViewFieldInputSchema>) =>
-    wrapInExecute(client, 'update_view_field', args),
+  metadataUpdateViewField: (
+    args: z.infer<typeof metadataUpdateViewFieldInputSchema>,
+  ) => wrapInExecute(client, 'update_view_field', args),
 
   metadataCreateManyViewFields: (
     args: z.infer<typeof metadataCreateManyViewFieldsInputSchema>,
   ) => wrapInExecute(client, 'create_many_view_fields', args),
 
-  metadataCreateViewFilter: async (args: z.infer<typeof metadataCreateViewFilterInputSchema>): Promise<ToolsCallResult> => {
+  metadataCreateViewFilter: async (
+    args: z.infer<typeof metadataCreateViewFilterInputSchema>,
+  ): Promise<ToolsCallResult> => {
     // Validate operand is compatible with the field's type BEFORE forwarding to Twenty.
-    const check = await assertOperandCompatible(client, args.fieldMetadataId, args.operand);
+    const check = await assertOperandCompatible(
+      client,
+      args.fieldMetadataId,
+      args.operand,
+    );
     if (!check.valid) {
       return makeError(check.error);
     }
@@ -360,7 +443,9 @@ export const buildViewHandlers = (client: TwentyMcpClient) => ({
     return wrapInExecute(client, 'create_view_filter', args);
   },
 
-  metadataUpdateViewFilter: async (args: z.infer<typeof metadataUpdateViewFilterInputSchema>): Promise<ToolsCallResult> => {
+  metadataUpdateViewFilter: async (
+    args: z.infer<typeof metadataUpdateViewFilterInputSchema>,
+  ): Promise<ToolsCallResult> => {
     // If operand is being updated, validate it is compatible with the field's type.
     if (args.operand !== undefined) {
       if (!args.fieldMetadataId) {
@@ -370,20 +455,29 @@ export const buildViewHandlers = (client: TwentyMcpClient) => ({
         // pass fieldMetadataId explicitly.
         return makeError(
           'metadata_update_view_filter requires fieldMetadataId when updating operand. ' +
-          'Look up the existing filter\'s fieldMetadataId via metadata_query({kind: \'view_filters\', args: {viewId: <viewId>}}) and pass it explicitly.',
+            "Look up the existing filter's fieldMetadataId via metadata_query({kind: 'view_filters', args: {viewId: <viewId>}}) and pass it explicitly.",
         );
       }
-      const check = await assertOperandCompatible(client, args.fieldMetadataId, args.operand);
+      const check = await assertOperandCompatible(
+        client,
+        args.fieldMetadataId,
+        args.operand,
+      );
       if (!check.valid) {
         return makeError(check.error);
       }
     }
 
-    return wrapInExecute(client, 'update_view_filter', stripFieldMetadataIdFromUpdateArgs(args));
+    return wrapInExecute(
+      client,
+      'update_view_filter',
+      stripFieldMetadataIdFromUpdateArgs(args),
+    );
   },
 
-  metadataCreateViewSort: (args: z.infer<typeof metadataCreateViewSortInputSchema>) =>
-    wrapInExecute(client, 'create_view_sort', args),
+  metadataCreateViewSort: (
+    args: z.infer<typeof metadataCreateViewSortInputSchema>,
+  ) => wrapInExecute(client, 'create_view_sort', args),
 });
 
 // --- Dispatch entries (consumed by metadata.ts apply_plan) ------------------
@@ -391,11 +485,27 @@ export const buildViewHandlers = (client: TwentyMcpClient) => ({
 export const viewsDispatchEntries: Record<string, DispatchEntry> = {
   CREATE_VIEW: { transport: 'inner_tool', innerToolName: 'create_view' },
   UPDATE_VIEW: { transport: 'inner_tool', innerToolName: 'update_view' },
-  CREATE_VIEW_FIELD: { transport: 'inner_tool', innerToolName: 'create_view_field' },
-  UPDATE_VIEW_FIELD: { transport: 'inner_tool', innerToolName: 'update_view_field' },
-  CREATE_VIEW_FILTER: { transport: 'inner_tool', innerToolName: 'create_view_filter' },
-  UPDATE_VIEW_FILTER: { transport: 'inner_tool', innerToolName: 'update_view_filter', argsTransform: stripFieldMetadataIdFromUpdateArgs },
-  CREATE_VIEW_SORT: { transport: 'inner_tool', innerToolName: 'create_view_sort' },
+  CREATE_VIEW_FIELD: {
+    transport: 'inner_tool',
+    innerToolName: 'create_view_field',
+  },
+  UPDATE_VIEW_FIELD: {
+    transport: 'inner_tool',
+    innerToolName: 'update_view_field',
+  },
+  CREATE_VIEW_FILTER: {
+    transport: 'inner_tool',
+    innerToolName: 'create_view_filter',
+  },
+  UPDATE_VIEW_FILTER: {
+    transport: 'inner_tool',
+    innerToolName: 'update_view_filter',
+    argsTransform: stripFieldMetadataIdFromUpdateArgs,
+  },
+  CREATE_VIEW_SORT: {
+    transport: 'inner_tool',
+    innerToolName: 'create_view_sort',
+  },
 };
 
 // --- Tool definitions --------------------------------------------------------
@@ -409,7 +519,7 @@ export const viewToolDefinitions = {
     annotations: { destructiveHint: true, idempotentHint: false },
   },
   metadata_update_view: {
-    title: 'Update a view\'s name or icon',
+    title: "Update a view's name or icon",
     description:
       'Only name and icon are mutable post-create. Other view properties (type, visibility, kanban/calendar configs) are immutable; if you need to change them, create a new view and archive the old one (rename to `[archived] <name>`).',
     inputSchema: metadataUpdateViewInputSchema.shape,
@@ -423,8 +533,9 @@ export const viewToolDefinitions = {
     annotations: { destructiveHint: true, idempotentHint: false },
   },
   metadata_update_view_field: {
-    title: 'Update a view column\'s visibility, size, position, or aggregate',
-    description: 'Use `metadata_query({kind: "view_fields"})` to find the view-field id.',
+    title: "Update a view column's visibility, size, position, or aggregate",
+    description:
+      'Use `metadata_query({kind: "view_fields"})` to find the view-field id.',
     inputSchema: metadataUpdateViewFieldInputSchema.shape,
     annotations: { destructiveHint: true, idempotentHint: true },
   },
@@ -455,7 +566,8 @@ export const viewToolDefinitions = {
   },
   metadata_create_view_sort: {
     title: 'Add a sort to a view',
-    description: 'Direction is ASC or DESC. Multiple sorts on the same view are stacked in the order created.',
+    description:
+      'Direction is ASC or DESC. Multiple sorts on the same view are stacked in the order created.',
     inputSchema: metadataCreateViewSortInputSchema.shape,
     annotations: { destructiveHint: true, idempotentHint: false },
   },

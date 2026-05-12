@@ -13,9 +13,9 @@
  * Transport: InMemoryTransport.createLinkedPair() — portable over protocol
  * message path; does not depend on internal SDK APIs.
  *
- * Scope: enableMetadata: true — the full registry.
- * The enableMetadata: false subset (discovery + crm + noteTargets) is covered
- * implicitly since those tools are also present in the full registry.
+ * Parametrised over both enableMetadata values (true and false) so that any
+ * accidental migration of a metadata tool across the feature-flag boundary is
+ * caught immediately — the false-case asserts a hard 7-tool contract.
  */
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { InMemoryTransport } from '@modelcontextprotocol/sdk/inMemory.js';
@@ -32,7 +32,9 @@ import { workflowToolDefinitions } from '../tools/workflows';
 // discovery is a singleton object, not a Record<string, …>; wrap it so it
 // can be treated uniformly alongside the other maps.
 // discovery is a singleton, not a map entry.
-const discoveryMap: Record<string, unknown> = { discovery: discoveryToolDefinition };
+const discoveryMap: Record<string, unknown> = {
+  discovery: discoveryToolDefinition,
+};
 
 /** All definition map keys in the enableMetadata: true universe. */
 const expectedKeys = new Set<string>([
@@ -43,6 +45,21 @@ const expectedKeys = new Set<string>([
   ...Object.keys(viewToolDefinitions),
   ...Object.keys(accessToolDefinitions),
   ...Object.keys(workflowToolDefinitions),
+]);
+
+/**
+ * Hard contract for enableMetadata: false — exactly these 7 tools, no more, no fewer.
+ * If a metadata tool is accidentally moved outside the if (enableMetadata) guard in
+ * server.ts, this assertion will catch it.
+ */
+const BASELINE_TOOLS = new Set<string>([
+  'discovery',
+  'search_records',
+  'get_record',
+  'create_record',
+  'update_record',
+  'delete_record',
+  'link_note_to_record',
 ]);
 
 describe('sdk-boundary: tools/list vs definition maps (enableMetadata: true)', () => {
@@ -57,7 +74,8 @@ describe('sdk-boundary: tools/list vs definition maps (enableMetadata: true)', (
       enableMetadata: true,
     });
 
-    const [clientTransport, serverTransport] = InMemoryTransport.createLinkedPair();
+    const [clientTransport, serverTransport] =
+      InMemoryTransport.createLinkedPair();
 
     const client = new Client({ name: 'sdk-boundary-test', version: '0.0.0' });
 
@@ -92,5 +110,63 @@ describe('sdk-boundary: tools/list vs definition maps (enableMetadata: true)', (
       }
     }
     expect(stray).toEqual([]);
+  });
+});
+
+describe('sdk-boundary: tools/list vs baseline contract (enableMetadata: false)', () => {
+  let registeredNames: Set<string>;
+
+  beforeAll(async () => {
+    // Boot server with enableMetadata: false — only the 7 baseline tools should appear.
+    // Any metadata tool accidentally moved outside the if (enableMetadata) guard in
+    // server.ts will cause both assertions below to fail.
+    const server = createServer({
+      twentyBaseUrl: 'http://localhost:4440',
+      twentyApiKey: 'test',
+      enableMetadata: false,
+    });
+
+    const [clientTransport, serverTransport] =
+      InMemoryTransport.createLinkedPair();
+
+    const client = new Client({
+      name: 'sdk-boundary-false-test',
+      version: '0.0.0',
+    });
+
+    await Promise.all([
+      server.connect(serverTransport),
+      client.connect(clientTransport),
+    ]);
+
+    const { tools } = await client.listTools();
+    registeredNames = new Set(tools.map((t) => t.name));
+
+    await client.close();
+  });
+
+  it('exactly the 7 baseline tools are registered (no metadata tool leaked into default registry)', () => {
+    // Hard contract: these 7 tools and no others.
+    const unexpected: string[] = [];
+    for (const name of registeredNames) {
+      if (!BASELINE_TOOLS.has(name)) {
+        unexpected.push(name);
+      }
+    }
+    expect(unexpected).toEqual([]);
+  });
+
+  it('all 7 baseline tools are present (none accidentally removed)', () => {
+    const missing: string[] = [];
+    for (const name of BASELINE_TOOLS) {
+      if (!registeredNames.has(name)) {
+        missing.push(name);
+      }
+    }
+    expect(missing).toEqual([]);
+  });
+
+  it('total registered count is exactly 7', () => {
+    expect(registeredNames.size).toBe(7);
   });
 });

@@ -22,15 +22,26 @@ import { FIELD_TYPE_OPERAND_MAP } from '../tools/views';
 // then: packages/twenty-front/src/...
 const TWENTY_FRONT_SOURCE = join(
   __dirname,
-  '..', '..', '..', 'twenty-front',
-  'src', 'modules', 'object-record', 'record-filter', 'utils',
+  '..',
+  '..',
+  '..',
+  'twenty-front',
+  'src',
+  'modules',
+  'object-record',
+  'record-filter',
+  'utils',
   'getRecordFilterOperands.ts',
 );
 
 describe('FIELD_TYPE_OPERAND_MAP matches twenty-front FILTER_OPERANDS_MAP', () => {
   if (!existsSync(TWENTY_FRONT_SOURCE)) {
-    it.skip(`twenty-front source not found at expected path: ${TWENTY_FRONT_SOURCE}`, () => {});
-    return;
+    // Loud alarm: if source file moved/renamed, CI fails immediately (not silently skipped).
+    throw new Error(
+      'twenty-front source file missing or moved — update TWENTY_FRONT_SOURCE path in ' +
+        'views-coverage.test.ts. Expected: ' +
+        TWENTY_FRONT_SOURCE,
+    );
   }
 
   const source = readFileSync(TWENTY_FRONT_SOURCE, 'utf8');
@@ -40,11 +51,18 @@ describe('FIELD_TYPE_OPERAND_MAP matches twenty-front FILTER_OPERANDS_MAP', () =
   // extract each TYPE: [...] entry. Uses a balanced-brace scan for robustness.
   const parseTwentyFrontMap = (): Record<string, string[]> => {
     // Find the start of FILTER_OPERANDS_MAP object literal
-    const startMatch = source.match(/export const FILTER_OPERANDS_MAP\s*=\s*\{/);
+    const startMatch = source.match(
+      /export const FILTER_OPERANDS_MAP\s*=\s*\{/,
+    );
     if (!startMatch || startMatch.index === undefined) {
-      throw new Error('Could not find FILTER_OPERANDS_MAP in twenty-front source');
+      throw new Error(
+        'Could not find FILTER_OPERANDS_MAP in twenty-front source',
+      );
     }
-    const braceStart = source.indexOf('{', startMatch.index + startMatch[0].length - 1);
+    const braceStart = source.indexOf(
+      '{',
+      startMatch.index + startMatch[0].length - 1,
+    );
 
     // Walk forward to find the matching closing brace
     let depth = 0;
@@ -53,7 +71,10 @@ describe('FIELD_TYPE_OPERAND_MAP matches twenty-front FILTER_OPERANDS_MAP', () =
       if (source[i] === '{') depth++;
       else if (source[i] === '}') {
         depth--;
-        if (depth === 0) { end = i; break; }
+        if (depth === 0) {
+          end = i;
+          break;
+        }
       }
     }
     const block = source.slice(braceStart, end + 1);
@@ -70,7 +91,10 @@ describe('FIELD_TYPE_OPERAND_MAP matches twenty-front FILTER_OPERANDS_MAP', () =
     while ((keyMatch = keyRe.exec(block)) !== null) {
       const fieldType = keyMatch[1]!;
       // Find the opening bracket position
-      const arrayStart = block.indexOf('[', keyMatch.index + keyMatch[0].length - 1);
+      const arrayStart = block.indexOf(
+        '[',
+        keyMatch.index + keyMatch[0].length - 1,
+      );
       // Walk forward to find matching ]
       let arrDepth = 0;
       let arrEnd = arrayStart;
@@ -78,7 +102,10 @@ describe('FIELD_TYPE_OPERAND_MAP matches twenty-front FILTER_OPERANDS_MAP', () =
         if (block[i] === '[') arrDepth++;
         else if (block[i] === ']') {
           arrDepth--;
-          if (arrDepth === 0) { arrEnd = i; break; }
+          if (arrDepth === 0) {
+            arrEnd = i;
+            break;
+          }
         }
       }
       const arrContent = block.slice(arrayStart + 1, arrEnd);
@@ -95,24 +122,43 @@ describe('FIELD_TYPE_OPERAND_MAP matches twenty-front FILTER_OPERANDS_MAP', () =
 
       // Handle spread operators: dynamically resolve any ...spreadName reference
       // by looking up the const declaration in the same source file.
+      // Uses a balanced-bracket scan (not a non-greedy regex) so nested arrays
+      // inside the spread const are handled correctly without a premature slice.
       const spreadRe = /\.\.\.([\w]+)/g;
       let spreadMatch: RegExpExecArray | null;
       while ((spreadMatch = spreadRe.exec(arrContent)) !== null) {
         const spreadName = spreadMatch[1]!;
-        // Find `const <spreadName> = [...]` or `const <spreadName>: ... = [...]` in source
-        const spreadDeclRe = new RegExp(
-          `const\\s+${spreadName}\\s*(?::[^=]+)?=\\s*\\[([\\s\\S]*?)\\]`,
+        // Find `const <spreadName> = [` or `const <spreadName>: ... = [` header in source
+        const headerRe = new RegExp(
+          `const\\s+${spreadName}\\s*(?::[^=]+)?=\\s*\\[`,
         );
-        const spreadDeclMatch = source.match(spreadDeclRe);
-        if (!spreadDeclMatch) {
+        const headerMatch = source.match(headerRe);
+        if (!headerMatch || headerMatch.index === undefined) {
           throw new Error(
             `views-coverage: spread operator "...${spreadName}" found in FILTER_OPERANDS_MAP ` +
-            `but no "const ${spreadName} = [...]" declaration found in the source file. ` +
-            `Update the parser in views-coverage.test.ts to handle this spread.`,
+              `but no "const ${spreadName} = [...]" declaration found in the source file. ` +
+              `Update the parser in views-coverage.test.ts to handle this spread.`,
           );
         }
-        // Extract RecordFilterOperand.X members from the spread declaration
-        const spreadContent = spreadDeclMatch[1]!;
+        // Walk forward from the opening bracket using balanced-bracket scan.
+        const bracketStart = source.indexOf(
+          '[',
+          headerMatch.index + headerMatch[0].length - 1,
+        );
+        let bDepth = 0;
+        let bEnd = bracketStart;
+        for (let bi = bracketStart; bi < source.length; bi++) {
+          if (source[bi] === '[') bDepth++;
+          else if (source[bi] === ']') {
+            bDepth--;
+            if (bDepth === 0) {
+              bEnd = bi;
+              break;
+            }
+          }
+        }
+        // Extract RecordFilterOperand.X members from the spread declaration content.
+        const spreadContent = source.slice(bracketStart + 1, bEnd);
         const spreadOpRe = /RecordFilterOperand\.([A-Z_]+)/g;
         let spreadOpMatch: RegExpExecArray | null;
         while ((spreadOpMatch = spreadOpRe.exec(spreadContent)) !== null) {
@@ -125,6 +171,46 @@ describe('FIELD_TYPE_OPERAND_MAP matches twenty-front FILTER_OPERANDS_MAP', () =
 
     return result;
   };
+
+  it('balanced-bracket scanner correctly slices nested-array spread declarations (item 6 regression guard)', () => {
+    // Confirms the balanced-bracket scan does NOT close on the first ] it finds.
+    // A non-greedy [\s\S]*?\] regex would slice at the inner ] and return only
+    // 'RecordFilterOperand.FIRST' — the scanner must return all three.
+    const fakeSource = `
+      const mySpread = [
+        RecordFilterOperand.FIRST,
+        [RecordFilterOperand.NESTED_INNER],
+        RecordFilterOperand.THIRD,
+      ];
+    `;
+    const headerMatch = fakeSource.match(
+      /const\s+mySpread\s*(?::[^=]+)?=\s*\[/,
+    );
+    expect(headerMatch).not.toBeNull();
+    const bracketStart = fakeSource.indexOf(
+      '[',
+      (headerMatch!.index ?? 0) + headerMatch![0].length - 1,
+    );
+    let depth = 0;
+    let end = bracketStart;
+    for (let i = bracketStart; i < fakeSource.length; i++) {
+      if (fakeSource[i] === '[') depth++;
+      else if (fakeSource[i] === ']') {
+        depth--;
+        if (depth === 0) {
+          end = i;
+          break;
+        }
+      }
+    }
+    const content = fakeSource.slice(bracketStart + 1, end);
+    const found: string[] = [];
+    const re = /RecordFilterOperand\.([A-Z_]+)/g;
+    let m: RegExpExecArray | null;
+    while ((m = re.exec(content)) !== null) found.push(m[1]!);
+    // Must capture all three — not just the first (non-greedy regression).
+    expect(found).toEqual(['FIRST', 'NESTED_INNER', 'THIRD']);
+  });
 
   it('FIELD_TYPE_OPERAND_MAP has the same field types as FILTER_OPERANDS_MAP', () => {
     const twentyFrontMap = parseTwentyFrontMap();
@@ -139,7 +225,9 @@ describe('FIELD_TYPE_OPERAND_MAP matches twenty-front FILTER_OPERANDS_MAP', () =
     for (const [fieldType, frontOperands] of Object.entries(twentyFrontMap)) {
       const wrapperOperands = FIELD_TYPE_OPERAND_MAP[fieldType];
       if (!wrapperOperands) {
-        errors.push(`${fieldType}: present in twenty-front but missing in wrapper`);
+        errors.push(
+          `${fieldType}: present in twenty-front but missing in wrapper`,
+        );
         continue;
       }
       const front = [...frontOperands].sort();
@@ -153,9 +241,9 @@ describe('FIELD_TYPE_OPERAND_MAP matches twenty-front FILTER_OPERANDS_MAP', () =
     if (errors.length > 0) {
       throw new Error(
         `FIELD_TYPE_OPERAND_MAP does not match twenty-front FILTER_OPERANDS_MAP:\n  ` +
-        errors.join('\n  ') +
-        `\n\nFix: update FIELD_TYPE_OPERAND_MAP in packages/twenty-mcp/src/tools/views.ts to match ` +
-        `packages/twenty-front/src/modules/object-record/record-filter/utils/getRecordFilterOperands.ts`,
+          errors.join('\n  ') +
+          `\n\nFix: update FIELD_TYPE_OPERAND_MAP in packages/twenty-mcp/src/tools/views.ts to match ` +
+          `packages/twenty-front/src/modules/object-record/record-filter/utils/getRecordFilterOperands.ts`,
       );
     }
   });

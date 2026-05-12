@@ -3,7 +3,7 @@ import {
   metadataApplyPlanInputSchema,
   sha256OfMutations,
 } from '../tools/metadata';
-import { TwentyMcpClient } from '../twenty-mcp-client';
+import type { TwentyMcpClient } from '../twenty-mcp-client';
 
 // Stub JWT for metadata_get_calling_actor tests.
 // Header: {"alg":"HS256","typ":"JWT"}
@@ -12,7 +12,9 @@ const STUB_JWT =
   'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJXT1JLU1BBQ0VfWCIsInR5cGUiOiJBUElfS0VZIiwid29ya3NwYWNlSWQiOiJXT1JLU1BBQ0VfWCIsImlhdCI6MTcwMDAwMDAwMCwiZXhwIjoxOTAwMDAwMDAwLCJqdGkiOiJBUElLRVlfWCJ9.signature';
 
 const makeClient = () => {
-  const toolsCall = jest.fn().mockResolvedValue({ content: [{ type: 'text', text: 'ok' }] });
+  const toolsCall = jest
+    .fn()
+    .mockResolvedValue({ content: [{ type: 'text', text: 'ok' }] });
   const graphqlMutation = jest.fn().mockResolvedValue({ stub: true });
 
   return {
@@ -76,7 +78,7 @@ describe('metadata_create_field — wire-level', () => {
   });
 });
 
-describe('metadata_create_relation — wraps single relation into Twenty\'s array shape', () => {
+describe("metadata_create_relation — wraps single relation into Twenty's array shape", () => {
   it('wraps the input in {relations: [...]} for create_many_relation_fields', async () => {
     const { toolsCall, client, apiKey } = makeClient();
     const handlers = buildMetadataHandlers(client, apiKey);
@@ -109,7 +111,12 @@ describe('metadata_apply_plan — dispatch + idempotency + hash check', () => {
         {
           key: 'k1',
           op: 'CREATE_FIELD',
-          args: { objectMetadataId: 'obj1', type: 'TEXT', name: 'foo', label: 'Foo' },
+          args: {
+            objectMetadataId: 'obj1',
+            type: 'TEXT',
+            name: 'foo',
+            label: 'Foo',
+          },
         },
         {
           key: 'k2',
@@ -124,8 +131,13 @@ describe('metadata_apply_plan — dispatch + idempotency + hash check', () => {
       ],
     });
 
-    const innerNames = toolsCall.mock.calls.map((c) => (c[1] as { toolName: string }).toolName);
-    expect(innerNames).toEqual(['create_field_metadata', 'create_object_metadata']);
+    const innerNames = toolsCall.mock.calls.map(
+      (c) => (c[1] as { toolName: string }).toolName,
+    );
+    expect(innerNames).toEqual([
+      'create_field_metadata',
+      'create_object_metadata',
+    ]);
 
     const parsed = JSON.parse(
       (result.content[0] as { type: 'text'; text: string }).text,
@@ -149,7 +161,10 @@ describe('metadata_apply_plan — dispatch + idempotency + hash check', () => {
     });
 
     expect(toolsCall).toHaveBeenCalledTimes(1);
-    expect((toolsCall.mock.calls[0]![1] as { arguments: { foo: number } }).arguments.foo).toBe(3);
+    expect(
+      (toolsCall.mock.calls[0]![1] as { arguments: { foo: number } }).arguments
+        .foo,
+    ).toBe(3);
   });
 
   it('stops on first failure and reports applied + failed', async () => {
@@ -170,7 +185,10 @@ describe('metadata_apply_plan — dispatch + idempotency + hash check', () => {
 
     const parsed = JSON.parse(
       (result.content[0] as { type: 'text'; text: string }).text,
-    ) as { applied: { key: string }[]; failed: { key: string; error: string } | null };
+    ) as {
+      applied: { key: string }[];
+      failed: { key: string; error: string } | null;
+    };
     expect(parsed.applied.map((a) => a.key)).toEqual(['k1']);
     expect(parsed.failed?.key).toBe('k2');
     expect(parsed.failed?.error).toBe('boom');
@@ -199,16 +217,21 @@ describe('metadata_apply_plan — dispatch + idempotency + hash check', () => {
     const { toolsCall, client, apiKey } = makeClient();
     const handlers = buildMetadataHandlers(client, apiKey);
 
-    const mutations = [{ key: 'k1', op: 'CREATE_FIELD' as const, args: { foo: 1 } }];
+    const mutations = [
+      { key: 'k1', op: 'CREATE_FIELD' as const, args: { foo: 1 } },
+    ];
     const expectedSha256 = sha256OfMutations(mutations);
 
-    const result = await handlers.metadataApplyPlan({ mutations, expectedSha256 });
+    const result = await handlers.metadataApplyPlan({
+      mutations,
+      expectedSha256,
+    });
 
     expect(toolsCall).toHaveBeenCalledTimes(1);
     expect(result.isError).toBe(false);
   });
 
-  it('CREATE_RELATION wraps args in {relations: [...]} per Twenty\'s inner shape', async () => {
+  it("CREATE_RELATION wraps args in {relations: [...]} per Twenty's inner shape", async () => {
     const { toolsCall, client, apiKey } = makeClient();
     const handlers = buildMetadataHandlers(client, apiKey);
 
@@ -251,14 +274,22 @@ describe('metadata_apply_plan — dispatch + idempotency + hash check', () => {
 
 describe('sha256OfMutations — canonical hashing', () => {
   it('produces the same hash regardless of key order in args', () => {
-    const a = sha256OfMutations([{ key: 'k1', op: 'CREATE_FIELD', args: { name: 'x', label: 'X' } }]);
-    const b = sha256OfMutations([{ key: 'k1', op: 'CREATE_FIELD', args: { label: 'X', name: 'x' } }]);
+    const a = sha256OfMutations([
+      { key: 'k1', op: 'CREATE_FIELD', args: { name: 'x', label: 'X' } },
+    ]);
+    const b = sha256OfMutations([
+      { key: 'k1', op: 'CREATE_FIELD', args: { label: 'X', name: 'x' } },
+    ]);
     expect(a).toBe(b);
   });
 
   it('changes when any nested value changes', () => {
-    const a = sha256OfMutations([{ key: 'k1', op: 'CREATE_FIELD', args: { name: 'x' } }]);
-    const b = sha256OfMutations([{ key: 'k1', op: 'CREATE_FIELD', args: { name: 'y' } }]);
+    const a = sha256OfMutations([
+      { key: 'k1', op: 'CREATE_FIELD', args: { name: 'x' } },
+    ]);
+    const b = sha256OfMutations([
+      { key: 'k1', op: 'CREATE_FIELD', args: { name: 'y' } },
+    ]);
     expect(a).not.toBe(b);
   });
 
@@ -291,7 +322,10 @@ describe('v1.1 typed tools', () => {
 
     expect(toolsCall).toHaveBeenCalledWith('execute_tool', {
       toolName: 'update_object_metadata',
-      arguments: { id: '00000000-0000-0000-0000-000000000001', labelSingular: 'Renamed' },
+      arguments: {
+        id: '00000000-0000-0000-0000-000000000001',
+        labelSingular: 'Renamed',
+      },
     });
   });
 
@@ -383,7 +417,11 @@ describe('metadata_query — Phase 4 graphql kinds', () => {
       // roles uses GraphQL `getRoles` query name (verified via /metadata
       // introspection — bug #5 fix). api_keys / webhooks use bare names.
       const expectedField =
-        kind === 'roles' ? 'getRoles' : kind === 'api_keys' ? 'apiKeys' : 'webhooks';
+        kind === 'roles'
+          ? 'getRoles'
+          : kind === 'api_keys'
+            ? 'apiKeys'
+            : 'webhooks';
       expect(query).toContain(expectedField);
     },
   );
@@ -399,18 +437,30 @@ describe('metadata_apply_plan — Phase 4 dispatcher extensions', () => {
         {
           key: 'k1',
           op: 'UPDATE_OBJECT',
-          args: { id: '00000000-0000-0000-0000-000000000001', labelSingular: 'X' },
+          args: {
+            id: '00000000-0000-0000-0000-000000000001',
+            labelSingular: 'X',
+          },
         },
         {
           key: 'k2',
           op: 'BULK_CREATE_FIELD',
-          args: { fields: [{ objectMetadataId: 'o', type: 'TEXT', name: 'n', label: 'L' }] },
+          args: {
+            fields: [
+              { objectMetadataId: 'o', type: 'TEXT', name: 'n', label: 'L' },
+            ],
+          },
         },
       ],
     });
 
-    const innerNames = toolsCall.mock.calls.map((c) => (c[1] as { toolName: string }).toolName);
-    expect(innerNames).toEqual(['update_object_metadata', 'create_many_field_metadata']);
+    const innerNames = toolsCall.mock.calls.map(
+      (c) => (c[1] as { toolName: string }).toolName,
+    );
+    expect(innerNames).toEqual([
+      'update_object_metadata',
+      'create_many_field_metadata',
+    ]);
   });
 
   it.each([
@@ -443,52 +493,58 @@ describe('metadata_apply_plan — Phase 4 dispatcher extensions', () => {
     ['INVITE_MEMBERS', 'sendInvitations'],
     ['CREATE_API_KEY', 'createApiKey'],
     ['REVOKE_API_KEY', 'revokeApiKey'],
-  ] as const)('access op %s routes to GraphQL mutation %s', async (op, mutationName) => {
-    const { toolsCall, graphqlMutation, client, apiKey } = makeClient();
-    const handlers = buildMetadataHandlers(client, apiKey);
+  ] as const)(
+    'access op %s routes to GraphQL mutation %s',
+    async (op, mutationName) => {
+      const { toolsCall, graphqlMutation, client, apiKey } = makeClient();
+      const handlers = buildMetadataHandlers(client, apiKey);
 
-    // Different ops need different minimal valid args; dispatcher passes through.
-    const args =
-      op === 'CREATE_ROLE'
-        ? { label: 'X' }
-        : op === 'UPDATE_ROLE'
-          ? { id: '00000000-0000-0000-0000-000000000001', label: 'Y' }
-          : op === 'UPSERT_OBJECT_PERMISSION'
-            ? {
-                roleId: '00000000-0000-0000-0000-000000000001',
-                objectPermissions: [
-                  { objectMetadataId: '00000000-0000-0000-0000-000000000002' },
-                ],
-              }
-            : op === 'UPSERT_FIELD_PERMISSION'
+      // Different ops need different minimal valid args; dispatcher passes through.
+      const args =
+        op === 'CREATE_ROLE'
+          ? { label: 'X' }
+          : op === 'UPDATE_ROLE'
+            ? { id: '00000000-0000-0000-0000-000000000001', label: 'Y' }
+            : op === 'UPSERT_OBJECT_PERMISSION'
               ? {
                   roleId: '00000000-0000-0000-0000-000000000001',
-                  fieldPermissions: [
+                  objectPermissions: [
                     {
                       objectMetadataId: '00000000-0000-0000-0000-000000000002',
-                      fieldMetadataId: '00000000-0000-0000-0000-000000000003',
                     },
                   ],
                 }
-              : op === 'INVITE_MEMBERS'
-                ? { emails: ['a@x.com'] }
-                : op === 'CREATE_API_KEY'
-                  ? {
-                      name: 'k',
-                      expiresAt: '2027-01-01T00:00:00Z',
-                      roleId: '00000000-0000-0000-0000-000000000001',
-                    }
-                  : { id: '00000000-0000-0000-0000-000000000001' };
+              : op === 'UPSERT_FIELD_PERMISSION'
+                ? {
+                    roleId: '00000000-0000-0000-0000-000000000001',
+                    fieldPermissions: [
+                      {
+                        objectMetadataId:
+                          '00000000-0000-0000-0000-000000000002',
+                        fieldMetadataId: '00000000-0000-0000-0000-000000000003',
+                      },
+                    ],
+                  }
+                : op === 'INVITE_MEMBERS'
+                  ? { emails: ['a@x.com'] }
+                  : op === 'CREATE_API_KEY'
+                    ? {
+                        name: 'k',
+                        expiresAt: '2027-01-01T00:00:00Z',
+                        roleId: '00000000-0000-0000-0000-000000000001',
+                      }
+                    : { id: '00000000-0000-0000-0000-000000000001' };
 
-    await handlers.metadataApplyPlan({
-      mutations: [{ key: 'k', op, args }],
-    });
+      await handlers.metadataApplyPlan({
+        mutations: [{ key: 'k', op, args }],
+      });
 
-    expect(toolsCall).not.toHaveBeenCalled();
-    expect(graphqlMutation).toHaveBeenCalledTimes(1);
-    const [query] = graphqlMutation.mock.calls[0]!;
-    expect(query).toContain(mutationName);
-  });
+      expect(toolsCall).not.toHaveBeenCalled();
+      expect(graphqlMutation).toHaveBeenCalledTimes(1);
+      const [query] = graphqlMutation.mock.calls[0]!;
+      expect(query).toContain(mutationName);
+    },
+  );
 
   it('reports a clear error when an op kind has no dispatch entry', async () => {
     const { client, apiKey } = makeClient();
@@ -527,19 +583,32 @@ describe('metadata_apply_plan — placeholder resolution', () => {
         {
           key: 'k1',
           op: 'CREATE_VIEW',
-          args: { name: 'My View', objectNameSingular: 'company', type: 'TABLE', visibility: 'WORKSPACE' },
+          args: {
+            name: 'My View',
+            objectNameSingular: 'company',
+            type: 'TABLE',
+            visibility: 'WORKSPACE',
+          },
         },
         {
           key: 'k2',
           op: 'CREATE_VIEW_FIELD',
-          args: { viewId: '$k1', fieldMetadataId: '96314745-0000-0000-0000-000000000001', isVisible: true, position: 0 },
+          args: {
+            viewId: '$k1',
+            fieldMetadataId: '96314745-0000-0000-0000-000000000001',
+            isVisible: true,
+            position: 0,
+          },
         },
       ],
     });
 
     // Second call must have had viewId substituted to the actual UUID.
     expect(toolsCall).toHaveBeenCalledTimes(2);
-    const secondCall = toolsCall.mock.calls[1]![1] as { toolName: string; arguments: { viewId: string } };
+    const secondCall = toolsCall.mock.calls[1]![1] as {
+      toolName: string;
+      arguments: { viewId: string };
+    };
     expect(secondCall.toolName).toBe('create_view_field');
     expect(secondCall.arguments.viewId).toBe('uuid-from-k1');
   });
@@ -553,7 +622,12 @@ describe('metadata_apply_plan — placeholder resolution', () => {
         {
           key: 'k1',
           op: 'CREATE_VIEW_FIELD',
-          args: { viewId: '$nonexistent_key', fieldMetadataId: 'some-id', isVisible: true, position: 0 },
+          args: {
+            viewId: '$nonexistent_key',
+            fieldMetadataId: 'some-id',
+            isVisible: true,
+            position: 0,
+          },
         },
       ],
     });
@@ -568,16 +642,50 @@ describe('metadata_apply_plan — placeholder resolution', () => {
     expect(parsed.failed?.error).toContain('nonexistent_key');
   });
 
+  it('unresolved placeholder error message contains the extracted key directly (not a re-parsed form)', async () => {
+    // Item 1 regression test: findUnresolved now returns {key} directly, so the
+    // error message uses key without a second regex parse. If the placeholder syntax
+    // were ever widened (e.g. ${prefix.key}), the error message must still name the
+    // correct key — not a malformed re-parse artefact.
+    const { toolsCall, client, apiKey } = makeClient();
+    const handlers = buildMetadataHandlers(client, apiKey);
+
+    const result = await handlers.metadataApplyPlan({
+      mutations: [
+        {
+          key: 'k1',
+          op: 'CREATE_VIEW_FIELD',
+          args: {
+            viewId: '$my_missing_key',
+            fieldMetadataId: 'some-id',
+            isVisible: true,
+            position: 0,
+          },
+        },
+      ],
+    });
+
+    expect(toolsCall).not.toHaveBeenCalled();
+    expect(result.isError).toBe(true);
+    const parsed = JSON.parse(
+      (result.content[0] as { type: 'text'; text: string }).text,
+    ) as { failed: { key: string; error: string } | null };
+    // The error must contain the bare key 'my_missing_key' (no dollar sign, no braces).
+    expect(parsed.failed?.error).toContain('my_missing_key');
+    // And NOT contain the re-parsed form that the old code produced (placeholder with dollar prefix only).
+    expect(parsed.failed?.error).toMatch(
+      /referenced mutation 'my_missing_key'/,
+    );
+  });
+
   it('skipped mutation does not populate resolved map: $skipped_key fails, $applied_key resolves', async () => {
     // k1 is in resumeFrom (skipped), k2 applies and returns an id,
     // k3 references both $k1 (skipped — should fail) and $k2 (applied — should resolve).
     // Since k3 uses both placeholders and $k1 is unresolved, the plan should stop at k3.
-    const toolsCall = jest
-      .fn()
-      .mockResolvedValueOnce({
-        content: [{ type: 'text', text: '{"id":"uuid-from-k2"}' }],
-        isError: false,
-      });
+    const toolsCall = jest.fn().mockResolvedValueOnce({
+      content: [{ type: 'text', text: '{"id":"uuid-from-k2"}' }],
+      isError: false,
+    });
     const client = { toolsCall } as unknown as TwentyMcpClient;
     const handlers = buildMetadataHandlers(client, STUB_JWT);
 
@@ -586,18 +694,34 @@ describe('metadata_apply_plan — placeholder resolution', () => {
         {
           key: 'k1',
           op: 'CREATE_VIEW',
-          args: { name: 'View 1', objectNameSingular: 'company', type: 'TABLE', visibility: 'WORKSPACE' },
+          args: {
+            name: 'View 1',
+            objectNameSingular: 'company',
+            type: 'TABLE',
+            visibility: 'WORKSPACE',
+          },
         },
         {
           key: 'k2',
           op: 'CREATE_VIEW',
-          args: { name: 'View 2', objectNameSingular: 'company', type: 'TABLE', visibility: 'WORKSPACE' },
+          args: {
+            name: 'View 2',
+            objectNameSingular: 'company',
+            type: 'TABLE',
+            visibility: 'WORKSPACE',
+          },
         },
         {
           key: 'k3',
           op: 'CREATE_VIEW_FIELD',
           // $k2 should resolve; $k1 is skipped so it will NOT resolve — expect failure.
-          args: { viewId: '$k1', relatedViewId: '$k2', fieldMetadataId: 'some-id', isVisible: true, position: 0 },
+          args: {
+            viewId: '$k1',
+            relatedViewId: '$k2',
+            fieldMetadataId: 'some-id',
+            isVisible: true,
+            position: 0,
+          },
         },
       ],
       resumeFrom: ['k1'],
@@ -630,7 +754,10 @@ describe('metadata_apply_plan — placeholder resolution', () => {
       .mockResolvedValueOnce({ createOneRole: { id: 'role-uuid', label: 'X' } })
       // Second call: UPSERT_OBJECT_PERMISSION
       .mockResolvedValueOnce({ upsertObjectPermissions: { success: true } });
-    const client = { toolsCall: jest.fn(), graphqlMutation } as unknown as TwentyMcpClient;
+    const client = {
+      toolsCall: jest.fn(),
+      graphqlMutation,
+    } as unknown as TwentyMcpClient;
     const handlers = buildMetadataHandlers(client, STUB_JWT);
 
     await handlers.metadataApplyPlan({
@@ -673,7 +800,10 @@ describe('metadata_apply_plan — placeholder resolution', () => {
         content: [{ type: 'text', text: '{"id":"uuid-2"}' }],
         isError: false,
       });
-    const client = { toolsCall, graphqlMutation: jest.fn() } as unknown as TwentyMcpClient;
+    const client = {
+      toolsCall,
+      graphqlMutation: jest.fn(),
+    } as unknown as TwentyMcpClient;
     const handlers = buildMetadataHandlers(client, STUB_JWT);
 
     const result = await handlers.metadataApplyPlan({
@@ -681,7 +811,12 @@ describe('metadata_apply_plan — placeholder resolution', () => {
         {
           key: 'k1',
           op: 'CREATE_VIEW',
-          args: { name: 'My View', objectNameSingular: 'company', type: 'TABLE', visibility: 'WORKSPACE' },
+          args: {
+            name: 'My View',
+            objectNameSingular: 'company',
+            type: 'TABLE',
+            visibility: 'WORKSPACE',
+          },
         },
         {
           key: 'k2',
@@ -719,13 +854,27 @@ describe('metadata_apply_plan — placeholder resolution', () => {
  */
 const makeMetadataClientWithFieldType = (fieldType: string) => {
   const fieldResponse = {
-    content: [{ type: 'text', text: JSON.stringify([{ id: '00000000-0000-0000-0000-000000000003', type: fieldType, name: 'testField' }]) }],
+    content: [
+      {
+        type: 'text',
+        text: JSON.stringify([
+          {
+            id: '00000000-0000-0000-0000-000000000003',
+            type: fieldType,
+            name: 'testField',
+          },
+        ]),
+      },
+    ],
     isError: false,
   };
-  const toolsCall = jest.fn().mockImplementation((_method: string, args: { toolName?: string }) => {
-    if (args.toolName === 'get_field_metadata') return Promise.resolve(fieldResponse);
-    return Promise.resolve({ content: [{ type: 'text', text: 'ok' }] });
-  });
+  const toolsCall = jest
+    .fn()
+    .mockImplementation((_method: string, args: { toolName?: string }) => {
+      if (args.toolName === 'get_field_metadata')
+        return Promise.resolve(fieldResponse);
+      return Promise.resolve({ content: [{ type: 'text', text: 'ok' }] });
+    });
   const graphqlMutation = jest.fn().mockResolvedValue({ stub: true });
 
   return {
@@ -739,23 +888,33 @@ const makeMetadataClientWithFieldType = (fieldType: string) => {
 describe('metadata_apply_plan — operand validation (Layer 2)', () => {
   it('apply_plan CREATE_VIEW_FILTER operand rejected', async () => {
     // Two-mutation plan: CREATE_VIEW (mock success) + CREATE_VIEW_FILTER with bad operand.
-    const { toolsCall, client, apiKey } = makeMetadataClientWithFieldType('DATE_TIME');
+    const { toolsCall, client, apiKey } =
+      makeMetadataClientWithFieldType('DATE_TIME');
     const handlers = buildMetadataHandlers(client, apiKey);
 
     // First call for CREATE_VIEW returns { id: 'view-uuid' }
-    toolsCall.mockImplementationOnce((_: string, args: { toolName?: string }) => {
-      if (args.toolName === 'create_view') {
-        return Promise.resolve({ content: [{ type: 'text', text: '{"id":"view-uuid"}' }], isError: false });
-      }
-      return Promise.resolve({ content: [{ type: 'text', text: 'ok' }] });
-    });
+    toolsCall.mockImplementationOnce(
+      (_: string, args: { toolName?: string }) => {
+        if (args.toolName === 'create_view') {
+          return Promise.resolve({
+            content: [{ type: 'text', text: '{"id":"view-uuid"}' }],
+            isError: false,
+          });
+        }
+        return Promise.resolve({ content: [{ type: 'text', text: 'ok' }] });
+      },
+    );
 
     const result = await handlers.metadataApplyPlan({
       mutations: [
         {
           key: 'k1',
           op: 'CREATE_VIEW',
-          args: { name: 'My View', objectNameSingular: 'company', visibility: 'WORKSPACE' },
+          args: {
+            name: 'My View',
+            objectNameSingular: 'company',
+            visibility: 'WORKSPACE',
+          },
         },
         {
           key: 'k2',
@@ -772,7 +931,10 @@ describe('metadata_apply_plan — operand validation (Layer 2)', () => {
 
     const parsed = JSON.parse(
       (result.content[0] as { type: 'text'; text: string }).text,
-    ) as { applied: { key: string }[]; failed: { op: string; error: string } | null };
+    ) as {
+      applied: { key: string }[];
+      failed: { op: string; error: string } | null;
+    };
 
     expect(parsed.failed?.op).toBe('CREATE_VIEW_FILTER');
     expect(parsed.failed?.error).toMatch(/not valid for DATE_TIME/);
@@ -786,7 +948,8 @@ describe('metadata_apply_plan — operand validation (Layer 2)', () => {
   });
 
   it('apply_plan UPDATE_VIEW_FILTER without fieldMetadataId fails closed', async () => {
-    const { toolsCall, client, apiKey } = makeMetadataClientWithFieldType('SELECT');
+    const { toolsCall, client, apiKey } =
+      makeMetadataClientWithFieldType('SELECT');
     const handlers = buildMetadataHandlers(client, apiKey);
 
     const result = await handlers.metadataApplyPlan({
@@ -823,7 +986,8 @@ describe('metadata_apply_plan — apply_plan UPDATE_VIEW_FILTER does NOT forward
     // Exercises the argsTransform on the UPDATE_VIEW_FILTER dispatch entry (HIGH-1 fix).
     // Without the argsTransform, fieldMetadataId leaks through the apply_plan path even
     // though the direct handler strips it — the apply_plan path is a separate call site.
-    const { toolsCall, client, apiKey } = makeMetadataClientWithFieldType('SELECT');
+    const { toolsCall, client, apiKey } =
+      makeMetadataClientWithFieldType('SELECT');
     const handlers = buildMetadataHandlers(client, apiKey);
 
     await handlers.metadataApplyPlan({
@@ -845,9 +1009,14 @@ describe('metadata_apply_plan — apply_plan UPDATE_VIEW_FILTER does NOT forward
       (c) => (c[1] as { toolName: string })?.toolName === 'update_view_filter',
     );
     expect(updateCalls).toHaveLength(1);
-    const forwardedArgs = (updateCalls[0]?.[1] as { arguments: Record<string, unknown> })?.arguments ?? {};
+    const forwardedArgs =
+      (updateCalls[0]?.[1] as { arguments: Record<string, unknown> })
+        ?.arguments ?? {};
     expect(forwardedArgs).not.toHaveProperty('fieldMetadataId');
-    expect(forwardedArgs).toHaveProperty('id', '00000000-0000-0000-0000-000000000001');
+    expect(forwardedArgs).toHaveProperty(
+      'id',
+      '00000000-0000-0000-0000-000000000001',
+    );
     expect(forwardedArgs).toHaveProperty('operand', 'IS');
   });
 });
@@ -857,7 +1026,9 @@ describe('metadata_compute_plan_hash', () => {
     const { toolsCall, graphqlMutation, client, apiKey } = makeClient();
     const handlers = buildMetadataHandlers(client, apiKey);
 
-    const mutations = [{ key: 'k1', op: 'CREATE_FIELD' as const, args: { foo: 1 } }];
+    const mutations = [
+      { key: 'k1', op: 'CREATE_FIELD' as const, args: { foo: 1 } },
+    ];
     const result = handlers.metadataComputePlanHash({ mutations });
 
     const parsed = JSON.parse(
@@ -874,13 +1045,18 @@ describe('metadata_compute_plan_hash', () => {
     const { toolsCall, client, apiKey } = makeClient();
     const handlers = buildMetadataHandlers(client, apiKey);
 
-    const mutations = [{ key: 'k1', op: 'CREATE_FIELD' as const, args: { foo: 1 } }];
+    const mutations = [
+      { key: 'k1', op: 'CREATE_FIELD' as const, args: { foo: 1 } },
+    ];
     const hashResult = handlers.metadataComputePlanHash({ mutations });
     const { hash } = JSON.parse(
       (hashResult.content[0] as { type: 'text'; text: string }).text,
     ) as { hash: string };
 
-    const applyResult = await handlers.metadataApplyPlan({ mutations, expectedSha256: hash });
+    const applyResult = await handlers.metadataApplyPlan({
+      mutations,
+      expectedSha256: hash,
+    });
 
     expect(applyResult.isError).toBe(false);
     const parsed = JSON.parse(
@@ -895,7 +1071,13 @@ describe('metadata_compute_plan_hash', () => {
     const handlers = buildMetadataHandlers(client, apiKey);
 
     handlers.metadataComputePlanHash({
-      mutations: [{ key: 'k1', op: 'CREATE_FIELD' as const, args: { name: 'x', label: 'X' } }],
+      mutations: [
+        {
+          key: 'k1',
+          op: 'CREATE_FIELD' as const,
+          args: { name: 'x', label: 'X' },
+        },
+      ],
     });
 
     expect(toolsCall).not.toHaveBeenCalled();
