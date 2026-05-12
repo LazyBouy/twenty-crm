@@ -54210,7 +54210,6 @@ __metadata:
     pluralize: "npm:^8.0.0"
     rimraf: "npm:^3.0.2"
     ts-jest: "npm:^29.1.0"
-    twenty-shared: "workspace:*"
     typescript: "npm:^5.4.0"
     zod: "npm:^4.1.11"
   bin:
