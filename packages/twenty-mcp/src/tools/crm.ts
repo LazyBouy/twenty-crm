@@ -27,11 +27,21 @@ import type { ToolsCallResult, TwentyMcpClient } from '../twenty-mcp-client';
  * to satisfy Twenty's flat schemas.
  */
 const normalize = (object: string): { singular: string; plural: string } => {
-  const trimmed = object.trim().replace(/\s+/g, '_').toLowerCase();
-
+  // Insert underscores at camelCase boundaries BEFORE lowercasing, so
+  // multi-word custom objects (`schemaChangeAudits` → `schema_change_audits`)
+  // match Twenty server's tool names (registered via camelToSnakeCase in
+  // packages/twenty-server/.../database-tool.provider.ts). Without this,
+  // toLowerCase strips word boundaries and pluralize is a no-op, producing
+  // `find_schemachangeaudits` instead of `find_schema_change_audits`.
+  // See issue #11 for the full failure mode.
+  const snakeified = object
+    .trim()
+    .replace(/\s+/g, '_')
+    .replace(/([a-z0-9])([A-Z])/g, '$1_$2')
+    .toLowerCase();
   return {
-    singular: pluralize.singular(trimmed),
-    plural: pluralize.plural(trimmed),
+    singular: pluralize.singular(snakeified),
+    plural: pluralize.plural(snakeified),
   };
 };
 

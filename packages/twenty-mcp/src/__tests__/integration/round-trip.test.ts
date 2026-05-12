@@ -308,3 +308,163 @@ describeIfDestructive('integration: operand validation — invalid operand rejec
     expect(leakedRows).toEqual([]);
   });
 });
+
+/**
+ * Multi-word custom object CRUD — issue #11.
+ * Creates a 2-word camelCase custom object (`mcpAuditFixture`), runs all 5 CRUD
+ * operations against it, then deletes it in afterAll. Proves the wrapper's
+ * camelCase-aware normalize() correctly routes to the server's camelToSnakeCase-
+ * registered inner tools (find_mcp_audit_fixtures, not find_mcpauditfixtures).
+ */
+describeIfDestructive('integration: multi-word custom object CRUD (issue #11)', () => {
+  if (enabled && destructiveOk && !apiKey) {
+    throw new Error('TWENTY_MCP_INTEGRATION=1 but TWENTY_API_KEY is not set');
+  }
+
+  const client = new TwentyMcpClient({ baseUrl, apiKey });
+  const objNameSingular = 'mcpAuditFixture'; // 2-word camelCase — provably exercises the bug
+  const objNamePlural = 'mcpAuditFixtures';
+  let objectMetadataId: string | undefined;
+  let createdRecordId: string | undefined;
+
+  const metadata = buildMetadataHandlers(client, apiKey);
+  const crm = buildCrmHandlers(client);
+
+  beforeAll(async () => {
+    if (!enabled || !destructiveOk) return;
+    // Defensive cleanup: if a prior test run crashed before afterAll, the
+    // mcpAuditFixture object may still exist on the workspace. Query first,
+    // delete if found, then create fresh. This keeps the test idempotent
+    // across re-runs without requiring a manual `docker compose down -v`.
+    const existing = await metadata.metadataQuery({
+      kind: 'objects',
+      args: { limit: 200 },
+    });
+    const existingText = (existing.content[0] as { type: 'text'; text: string }).text;
+    const existingObjects = parseInnerOrGraphqlArray<{ id: string; nameSingular: string }>(
+      existingText,
+    );
+    const stale = existingObjects.find((o) => o.nameSingular === objNameSingular);
+    if (stale) {
+      // metadata_apply_plan does NOT support DELETE_OBJECT — use a direct
+      // GraphQL mutation on the /metadata endpoint instead. This is the only
+      // mechanism Twenty currently exposes for hard-deleting object metadata.
+      await client.graphqlMutation(
+        'mutation DeleteObject($input: DeleteOneObjectInput!) { deleteOneObject(input: $input) { id } }',
+        { input: { id: stale.id } },
+        'metadata',
+      );
+    }
+
+    // Bootstrap the test fixture: create a 2-word custom object via apply_plan.
+    const result = await metadata.metadataApplyPlan({
+      mutations: [
+        {
+          key: 'create_mcp_audit_fixture',
+          op: 'CREATE_OBJECT',
+          args: {
+            nameSingular: objNameSingular,
+            namePlural: objNamePlural,
+            labelSingular: 'MCP Audit Fixture',
+            labelPlural: 'MCP Audit Fixtures',
+            icon: 'IconTestPipe',
+            description: 'Temporary fixture for issue #11 integration test. Safe to delete.',
+          },
+        },
+      ],
+    });
+    const parsed = JSON.parse((result.content[0] as { type: 'text'; text: string }).text);
+    if (parsed.failed) {
+      throw new Error(
+        `round-trip.test: failed to bootstrap mcpAuditFixture object: ${JSON.stringify(parsed.failed)}. ` +
+          `If a stale fixture exists despite the defensive cleanup above, investigate manually via ` +
+          `metadata_query({kind:'objects'}) and the deleteOneObject GraphQL mutation.`,
+      );
+    }
+    // apply_plan wraps each mutation's result: the inner-tool response is itself
+    // an MCP ToolsCallResult ({content: [{type:'text', text: '<JSON>'}], isError}).
+    // Extract the actual created-object payload from that nested text field.
+    const appliedEntry = parsed.applied?.[0]?.result as
+      | { content?: Array<{ type: string; text: string }>; isError?: boolean }
+      | undefined;
+    const innerText = appliedEntry?.content?.[0]?.text;
+    if (!innerText) {
+      throw new Error(
+        `round-trip.test: CREATE_OBJECT applied entry has no inner text. Got: ${JSON.stringify(parsed.applied?.[0])}`,
+      );
+    }
+    const innerObject = JSON.parse(innerText) as { id?: string };
+    objectMetadataId = innerObject.id;
+    if (!objectMetadataId) {
+      throw new Error(
+        `round-trip.test: CREATE_OBJECT succeeded but no objectMetadataId returned. Inner payload: ${innerText}`,
+      );
+    }
+  });
+
+  afterAll(async () => {
+    // Cleanup: delete the fixture object so the workspace returns to its pre-test state.
+    // metadata_apply_plan does NOT support DELETE_OBJECT (apply_plan is build-up only,
+    // not teardown). Use a direct GraphQL mutation on the /metadata endpoint.
+    if (objectMetadataId) {
+      await client.graphqlMutation(
+        'mutation DeleteObject($input: DeleteOneObjectInput!) { deleteOneObject(input: $input) { id } }',
+        { input: { id: objectMetadataId } },
+        'metadata',
+      );
+    }
+  });
+
+  it('search_records on multi-word object name routes to find_mcp_audit_fixtures (NOT find_mcpauditfixtures)', async () => {
+    const result = await crm.searchRecords({ object: objNamePlural, limit: 5 });
+    const parsed = JSON.parse((result.content[0] as { type: 'text'; text: string }).text);
+    expect(parsed.success).toBe(true);
+    // Before-fix failure mode: "Tool \"find_mcpauditfixtures\" not found"
+    // After-fix: success with an empty result set on a fresh object.
+  });
+
+  it('create_record on multi-word object name routes to create_mcp_audit_fixture', async () => {
+    // Twenty auto-creates a `name` field on every custom object; we write to that.
+    const result = await crm.createRecord({
+      object: objNameSingular,
+      data: { name: 'issue-11-test-row' },
+    });
+    const parsed = JSON.parse((result.content[0] as { type: 'text'; text: string }).text);
+    expect(parsed.success).toBe(true);
+    expect(parsed.result?.id).toBeTruthy();
+    createdRecordId = parsed.result.id as string;
+  });
+
+  it('get_record on multi-word object name routes to find_one_mcp_audit_fixture', async () => {
+    if (!createdRecordId) throw new Error('createdRecordId not set — create test must precede');
+    const result = await crm.getRecord({ object: objNameSingular, id: createdRecordId });
+    const parsed = JSON.parse((result.content[0] as { type: 'text'; text: string }).text);
+    expect(parsed.success).toBe(true);
+    const record = (parsed.result as { records?: Array<{ id: string }> })?.records?.[0];
+    expect(record?.id).toBe(createdRecordId);
+  });
+
+  it('update_record on multi-word object name routes to update_mcp_audit_fixture', async () => {
+    if (!createdRecordId) throw new Error('createdRecordId not set');
+    const result = await crm.updateRecord({
+      object: objNameSingular,
+      id: createdRecordId,
+      data: { name: 'issue-11-test-row-updated' },
+    });
+    const parsed = JSON.parse((result.content[0] as { type: 'text'; text: string }).text);
+    expect(parsed.success).toBe(true);
+  });
+
+  it('delete_record on multi-word object name routes to delete_mcp_audit_fixture', async () => {
+    if (!createdRecordId) throw new Error('createdRecordId not set');
+    const result = await crm.deleteRecord({ object: objNameSingular, id: createdRecordId });
+    const parsed = JSON.parse((result.content[0] as { type: 'text'; text: string }).text);
+    expect(parsed.success).toBe(true);
+  });
+
+  it('also routes for singular-form input → search converts to plural correctly', async () => {
+    const result = await crm.searchRecords({ object: objNameSingular, limit: 5 });
+    const parsed = JSON.parse((result.content[0] as { type: 'text'; text: string }).text);
+    expect(parsed.success).toBe(true); // wrapper pluralizes 'mcpAuditFixture' → find_mcp_audit_fixtures
+  });
+});

@@ -32,6 +32,47 @@ describe('innerToolName — Twenty per-object tool naming', () => {
   it('normalizes spaces and case', () => {
     expect(innerToolName('search', 'Note Targets')).toBe('find_note_targets');
   });
+
+  // Multi-word custom objects (camelCase) — issue #11
+  it('handles camelCase multi-word object names (issue #11)', () => {
+    expect(innerToolName('search', 'schemaChangeAudits')).toBe('find_schema_change_audits');
+    expect(innerToolName('search', 'schemaChangeAudit')).toBe('find_schema_change_audits');
+    expect(innerToolName('get', 'schemaChangeAudit')).toBe('find_one_schema_change_audit');
+    expect(innerToolName('create', 'customerHealth')).toBe('create_customer_health');
+    expect(innerToolName('update', 'companyMetric')).toBe('update_company_metric');
+    expect(innerToolName('delete', 'salesActivity')).toBe('delete_sales_activity');
+  });
+
+  // KNOWN LIMITATION (separate bug class — NOT fixed by issue #11): the `pluralize`
+  // library mishandles English mass nouns (analytics, data, metadata, news, series,
+  // mathematics, physics, statistics, etc.). For object names containing these
+  // stems, the wrapper's singular form will be incorrect. Documented here so the
+  // limitation is visible; tracked as a separate follow-up bug class.
+  // Example: 'companyAnalytics' → snakeified 'company_analytics' →
+  //   pluralize.singular('company_analytics') returns 'company_analytic' (WRONG —
+  //   server expects 'company_analytics' for both nameSingular and namePlural since
+  //   English treats 'analytics' as a mass noun). The 'search' op produces the
+  //   correct name because pluralize.plural is a no-op on already-plural forms;
+  //   the singular ops produce the wrong name.
+  it('documents pluralize-mass-noun limitation (separate bug class, deferred)', () => {
+    // The 'search' (plural) side happens to produce the correct server tool name:
+    expect(innerToolName('search', 'companyAnalytics')).toBe('find_company_analytics');
+    // The 'create' / 'get' / 'update' / 'delete' (singular) side does NOT — this is
+    // the known limitation. Asserting the actual (buggy) output here so a future fix
+    // that imports nameSingular/namePlural from server-side metadata (instead of
+    // pluralize-inferring) will need to update this assertion:
+    expect(innerToolName('create', 'companyAnalytics')).toBe('create_company_analytic');
+  });
+
+  it('handles already-snake_cased forms (existing workaround still works)', () => {
+    expect(innerToolName('search', 'schema_change_audits')).toBe('find_schema_change_audits');
+    expect(innerToolName('search', 'schema_change_audit')).toBe('find_schema_change_audits');
+  });
+
+  it('handles PascalCase and space-separated forms (wrapper advertised flexibility)', () => {
+    expect(innerToolName('search', 'SchemaChangeAudits')).toBe('find_schema_change_audits');
+    expect(innerToolName('search', 'Schema Change Audits')).toBe('find_schema_change_audits');
+  });
 });
 
 /**
