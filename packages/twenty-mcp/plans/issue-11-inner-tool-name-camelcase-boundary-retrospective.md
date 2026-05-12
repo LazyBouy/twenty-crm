@@ -3,7 +3,7 @@
 > Issue(s): #11
 > Plan: packages/twenty-mcp/plans/issue-11-inner-tool-name-camelcase-boundary.md
 > Audit cycles: 1
-> Commit: pending — filled by closer post-commit
+> Commit: 613026c16e
 > Written: 2026-05-12T00:00:00Z
 
 ## Forecast vs actual
@@ -62,11 +62,15 @@ The supervisor decides whether to wire these into CLAUDE.md or leave them for a 
 ## Diff summary
 
 ```
- packages/twenty-mcp/src/__tests__/crm.test.ts      |  41 ++++++
- .../src/__tests__/integration/round-trip.test.ts   | 160 +++++++++++++++++++++
- packages/twenty-mcp/src/tools/crm.ts               |  18 ++-
- packages/twenty-mcp/src/__tests__/crm-coverage.test.ts | 84 (new file)
- 4 files changed, 303 insertions(+), 4 deletions(-)
+ ...r-tool-name-camelcase-boundary-audit-round-1.md | 115 ++++
+ ...r-tool-name-camelcase-boundary-retrospective.md |  72 +++
+ .../issue-11-inner-tool-name-camelcase-boundary.md | 597 +++++++++++++++++++++
+ packages/twenty-mcp/plans/low-backlog.md           |   1 +
+ .../twenty-mcp/src/__tests__/crm-coverage.test.ts  |  82 +++
+ packages/twenty-mcp/src/__tests__/crm.test.ts      |  41 ++
+ .../src/__tests__/integration/round-trip.test.ts   | 160 ++++++
+ packages/twenty-mcp/src/tools/crm.ts               |  18 +-
+ 8 files changed, 1082 insertions(+), 4 deletions(-)
 ```
 
-(Note: `git diff --stat HEAD` reports 3 modified files at +215/-4. The new untracked `crm-coverage.test.ts` adds another ~84 lines. Plan file and audit/retrospective files are not part of the production diff.)
+(Production code diff: 3 modified files at +303/-4 (`crm.ts`, `crm.test.ts`, `round-trip.test.ts`) + 1 new file (`crm-coverage.test.ts`). Plan, audit, retrospective, and low-backlog are metadata.)
