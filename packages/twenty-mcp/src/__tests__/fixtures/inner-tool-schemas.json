@@ -1,5 +1,5 @@
 {
-  "$comment": "Inner-tool schema fixture — what Twenty's MCP /mcp endpoint accepts for each `execute_tool` call. Used by contract.test.ts to validate that wrapper handlers forward Twenty-shaped payloads. Two components per entry: `schema` (a JSON Schema validated with ajv when present) and `forbiddenTopLevel` (a list of keys that must NOT appear at the top of the forwarded args — catches the wrapper-bug class even when we don't have a full per-object schema). Refresh via scripts/capture-inner-schemas.ts when Twenty's server changes.",
+  "$comment": "Inner-tool schema fixture \u2014 what Twenty's MCP /mcp endpoint accepts for each `execute_tool` call. Used by contract.test.ts to validate that wrapper handlers forward Twenty-shaped payloads. Two components per entry: `schema` (a JSON Schema validated with ajv when present) and `forbiddenTopLevel` (a list of keys that must NOT appear at the top of the forwarded args \u2014 catches the wrapper-bug class even when we don't have a full per-object schema). Refresh via scripts/capture-inner-schemas.ts when Twenty's server changes.",
   "$source": "Captured from http://localhost:4440 on 2026-05-02T18:08:31.641Z (object=person). Hand-curated forbiddenTopLevel preserved.",
   "tools": {
     "0": {
@@ -2189,7 +2189,7 @@
               "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
             },
             "operand": {
-              "description": "Filter operator. Valid operators per field type — TEXT/EMAILS/FULL_NAME: CONTAINS, DOES_NOT_CONTAIN, IS_EMPTY, IS_NOT_EMPTY. NUMBER/NUMERIC: IS, IS_NOT, GREATER_THAN_OR_EQUAL, LESS_THAN_OR_EQUAL, IS_EMPTY, IS_NOT_EMPTY. CURRENCY: GREATER_THAN_OR_EQUAL, LESS_THAN_OR_EQUAL, IS_EMPTY, IS_NOT_EMPTY. DATE/DATE_TIME: IS, IS_RELATIVE, IS_IN_PAST, IS_IN_FUTURE, IS_TODAY, IS_BEFORE, IS_AFTER, IS_EMPTY, IS_NOT_EMPTY. SELECT: IS, IS_NOT, IS_EMPTY, IS_NOT_EMPTY. MULTI_SELECT/ARRAY: CONTAINS, DOES_NOT_CONTAIN, IS_EMPTY, IS_NOT_EMPTY. RELATION: IS, IS_NOT, IS_EMPTY, IS_NOT_EMPTY. BOOLEAN: IS.",
+              "description": "Filter operator. Valid operators per field type \u2014 TEXT/EMAILS/FULL_NAME: CONTAINS, DOES_NOT_CONTAIN, IS_EMPTY, IS_NOT_EMPTY. NUMBER/NUMERIC: IS, IS_NOT, GREATER_THAN_OR_EQUAL, LESS_THAN_OR_EQUAL, IS_EMPTY, IS_NOT_EMPTY. CURRENCY: GREATER_THAN_OR_EQUAL, LESS_THAN_OR_EQUAL, IS_EMPTY, IS_NOT_EMPTY. DATE/DATE_TIME: IS, IS_RELATIVE, IS_IN_PAST, IS_IN_FUTURE, IS_TODAY, IS_BEFORE, IS_AFTER, IS_EMPTY, IS_NOT_EMPTY. SELECT: IS, IS_NOT, IS_EMPTY, IS_NOT_EMPTY. MULTI_SELECT/ARRAY: CONTAINS, DOES_NOT_CONTAIN, IS_EMPTY, IS_NOT_EMPTY. RELATION: IS, IS_NOT, IS_EMPTY, IS_NOT_EMPTY. BOOLEAN: IS.",
               "type": "string",
               "enum": [
                 "IS",
@@ -2238,7 +2238,7 @@
               ]
             },
             "subFieldName": {
-              "description": "Required for composite fields — e.g. \"amountMicros\" for CURRENCY, \"addressCity\" for ADDRESS, \"firstName\" or \"lastName\" for FULL_NAME.",
+              "description": "Required for composite fields \u2014 e.g. \"amountMicros\" for CURRENCY, \"addressCity\" for ADDRESS, \"firstName\" or \"lastName\" for FULL_NAME.",
               "type": "string"
             }
           },
@@ -2372,7 +2372,7 @@
     "21": {
       "schema": {
         "name": "create_complete_workflow",
-        "description": "Create a complete workflow with trigger, steps, and connections in a single operation.\n\nCRITICAL SCHEMA REQUIREMENTS:\n- Trigger type MUST be one of: DATABASE_EVENT, MANUAL, CRON, WEBHOOK\n- NEVER use \"RECORD_CREATED\" - this is invalid. Use \"DATABASE_EVENT\" instead.\n- Each step MUST include: id (must be a valid UUID), name, type, valid, settings\n- CREATE_RECORD actions MUST have objectName and objectRecord in settings.input\n- objectRecord must contain actual field values, not just field names\n- Use \"trigger\" as stepId for trigger step in stepPositions and edges\n\nCommon mistakes to avoid:\n- Using \"RECORD_CREATED\" instead of \"DATABASE_EVENT\"\n- Missing the \"name\" and \"valid\" fields in steps\n- Missing the \"objectRecord\" field in CREATE_RECORD actions\n- Using \"fieldsToUpdate\" instead of \"objectRecord\" in CREATE_RECORD actions\n- Including CODE steps in this tool — this tool does NOT create the underlying logic function needed by CODE steps. Instead, create the workflow without CODE steps first, then add CODE steps individually using create_workflow_version_step (which properly creates the logic function), then call update_logic_function_source to define the code.\n\nIMPORTANT: The tool schema provides comprehensive field descriptions, examples, and validation rules. Always refer to the schema for:\n- Field requirements and data types\n- Common object patterns and field structures\n- Proper relationship field formats\n- Variable reference syntax: {{trigger.fieldName}} for trigger data, {{<step-id>.result.fieldName}} for step outputs (step-id is the step's UUID, not its name)\n- Error handling options\n\nThis is the most efficient way for AI to create workflows as it handles all the complexity in one call.",
+        "description": "Create a complete workflow with trigger, steps, and connections in a single operation.\n\nCRITICAL SCHEMA REQUIREMENTS:\n- Trigger type MUST be one of: DATABASE_EVENT, MANUAL, CRON, WEBHOOK\n- NEVER use \"RECORD_CREATED\" - this is invalid. Use \"DATABASE_EVENT\" instead.\n- Each step MUST include: id (must be a valid UUID), name, type, valid, settings\n- CREATE_RECORD actions MUST have objectName and objectRecord in settings.input\n- objectRecord must contain actual field values, not just field names\n- Use \"trigger\" as stepId for trigger step in stepPositions and edges\n\nCommon mistakes to avoid:\n- Using \"RECORD_CREATED\" instead of \"DATABASE_EVENT\"\n- Missing the \"name\" and \"valid\" fields in steps\n- Missing the \"objectRecord\" field in CREATE_RECORD actions\n- Using \"fieldsToUpdate\" instead of \"objectRecord\" in CREATE_RECORD actions\n- Including CODE steps in this tool \u2014 this tool does NOT create the underlying logic function needed by CODE steps. Instead, create the workflow without CODE steps first, then add CODE steps individually using create_workflow_version_step (which properly creates the logic function), then call update_logic_function_source to define the code.\n\nIMPORTANT: The tool schema provides comprehensive field descriptions, examples, and validation rules. Always refer to the schema for:\n- Field requirements and data types\n- Common object patterns and field structures\n- Proper relationship field formats\n- Variable reference syntax: {{trigger.fieldName}} for trigger data, {{<step-id>.result.fieldName}} for step outputs (step-id is the step's UUID, not its name)\n- Error handling options\n\nThis is the most efficient way for AI to create workflows as it handles all the complexity in one call.",
         "inputSchema": {
           "$schema": "https://json-schema.org/draft/2020-12/schema",
           "type": "object",
@@ -3031,7 +3031,7 @@
                             "type": "object",
                             "properties": {
                               "logicFunctionId": {
-                                "description": "The ID of the logic function that holds the code. This is auto-generated when a CODE step is created via create_workflow_version_step — do NOT set this manually.",
+                                "description": "The ID of the logic function that holds the code. This is auto-generated when a CODE step is created via create_workflow_version_step \u2014 do NOT set this manually.",
                                 "type": "string"
                               },
                               "logicFunctionInput": {
@@ -6250,7 +6250,7 @@
                               "type": "object",
                               "properties": {
                                 "logicFunctionId": {
-                                  "description": "The ID of the logic function that holds the code. This is auto-generated when a CODE step is created via create_workflow_version_step — do NOT set this manually.",
+                                  "description": "The ID of the logic function that holds the code. This is auto-generated when a CODE step is created via create_workflow_version_step \u2014 do NOT set this manually.",
                                   "type": "string"
                                 },
                                 "logicFunctionInput": {
@@ -9296,7 +9296,7 @@
       "forbiddenTopLevel": []
     },
     "find_<plural>": {
-      "$shape": "Twenty's find_<plural> generated per-object — top-level field filters spread alongside fixed keys. We can't enumerate field names statically (per-object), so the fixture only forbids wrapper-only keys.",
+      "$shape": "Twenty's find_<plural> generated per-object \u2014 top-level field filters spread alongside fixed keys. We can't enumerate field names statically (per-object), so the fixture only forbids wrapper-only keys.",
       "schema": null,
       "forbiddenTopLevel": [
         "data",
@@ -9329,7 +9329,7 @@
       ]
     },
     "create_<singular>": {
-      "$shape": "{ ...flat field keys at top level } — additionalProperties: false on the live schema",
+      "$shape": "{ ...flat field keys at top level } \u2014 additionalProperties: false on the live schema",
       "schema": null,
       "forbiddenTopLevel": [
         "data",
@@ -9407,7 +9407,7 @@
       ]
     },
     "create_many_field_metadata": {
-      "$shape": "{ fields: [...] } — wrapper key is `fields`",
+      "$shape": "{ fields: [...] } \u2014 wrapper key is `fields`",
       "schema": {
         "type": "object",
         "required": [
@@ -9426,7 +9426,7 @@
       ]
     },
     "create_many_relation_fields": {
-      "$shape": "{ relations: [...] } — wrapper key is `relations`",
+      "$shape": "{ relations: [...] } \u2014 wrapper key is `relations`",
       "schema": {
         "type": "object",
         "required": [
@@ -9613,7 +9613,7 @@
       ]
     },
     "createNoteTarget": {
-      "$shape": "GraphQL mutation — variables: { data: { noteId, targetCompanyId?, targetPersonId?, targetOpportunityId? } }",
+      "$shape": "GraphQL mutation \u2014 variables: { data: { noteId, targetCompanyId?, targetPersonId?, targetOpportunityId? } }",
       "$comment": "Bypasses the record-crud workflow gate by routing through Twenty's GraphQL createOne resolver. The fixture validates the GraphQL `variables` payload, not an execute_tool arguments payload.",
       "schema": {
         "type": "object",
@@ -9712,6 +9712,19 @@
           "required": [
             "viewId"
           ],
+          "additionalProperties": false
+        }
+      },
+      "forbiddenTopLevel": []
+    },
+    "get_object_metadata": {
+      "schema": {
+        "name": "get_object_metadata",
+        "description": "List all object metadata items in the workspace. Returns nameSingular, namePlural, isCustom, isSystem, and other object metadata.",
+        "inputSchema": {
+          "$schema": "https://json-schema.org/draft/2020-12/schema",
+          "type": "object",
+          "properties": {},
           "additionalProperties": false
         }
       },

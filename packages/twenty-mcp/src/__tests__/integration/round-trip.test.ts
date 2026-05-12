@@ -568,3 +568,362 @@ describeIfDestructive(
   },
 );
 
+/**
+ * Embedded-acronym custom object CRUD — issue #12.
+ * Creates a custom object with consecutive capital letters in nameSingular
+ * (`myAPIKeyFixture`), runs all 5 CRUD operations, then deletes in afterAll.
+ * Proves the wrapper's resolveObjectNames + camelToSnakeCase correctly routes
+ * to the server's camelToSnakeCase-registered inner tools
+ * (find_my_a_p_i_key_fixtures, NOT find_myapikeyfixtures).
+ */
+describeIfDestructive(
+  'integration: embedded-acronym custom object CRUD (issue #12)',
+  () => {
+    if (enabled && destructiveOk && !apiKey) {
+      throw new Error('TWENTY_MCP_INTEGRATION=1 but TWENTY_API_KEY is not set');
+    }
+
+    const client = new TwentyMcpClient({ baseUrl, apiKey });
+    const objNameSingular = 'myAPIKeyFixture';
+    const objNamePlural = 'myAPIKeyFixtures';
+    let objectMetadataId: string | undefined;
+    let createdRecordId: string | undefined;
+
+    const metadata = buildMetadataHandlers(client, apiKey);
+    const crm = buildCrmHandlers(client);
+
+    beforeAll(async () => {
+      if (!enabled || !destructiveOk) return;
+      // Defensive cleanup: delete stale fixture if present from a prior crashed run.
+      const existing = await metadata.metadataQuery({
+        kind: 'objects',
+        args: { limit: 200 },
+      });
+      const existingText = (
+        existing.content[0] as { type: 'text'; text: string }
+      ).text;
+      const existingObjects = parseInnerOrGraphqlArray<{
+        id: string;
+        nameSingular: string;
+      }>(existingText);
+      const stale = existingObjects.find(
+        (o) => o.nameSingular === objNameSingular,
+      );
+      if (stale) {
+        await client.graphqlMutation(
+          'mutation DeleteObject($input: DeleteOneObjectInput!) { deleteOneObject(input: $input) { id } }',
+          { input: { id: stale.id } },
+          'metadata',
+        );
+      }
+
+      // Create the embedded-acronym custom object.
+      const result = await metadata.metadataApplyPlan({
+        mutations: [
+          {
+            key: 'create_my_api_key_fixture',
+            op: 'CREATE_OBJECT',
+            args: {
+              nameSingular: objNameSingular,
+              namePlural: objNamePlural,
+              labelSingular: 'My API Key Fixture',
+              labelPlural: 'My API Key Fixtures',
+              icon: 'IconKey',
+              description:
+                'Temporary fixture for issue #12 integration test. Safe to delete.',
+            },
+          },
+        ],
+      });
+      const parsed = JSON.parse(
+        (result.content[0] as { type: 'text'; text: string }).text,
+      );
+      if (parsed.failed) {
+        throw new Error(
+          `round-trip.test: failed to bootstrap myAPIKeyFixture object: ${JSON.stringify(parsed.failed)}`,
+        );
+      }
+      const appliedEntry = parsed.applied?.[0]?.result as
+        | { content?: Array<{ type: string; text: string }>; isError?: boolean }
+        | undefined;
+      const innerText = appliedEntry?.content?.[0]?.text;
+      if (!innerText) {
+        throw new Error(
+          `round-trip.test: CREATE_OBJECT applied entry has no inner text. Got: ${JSON.stringify(parsed.applied?.[0])}`,
+        );
+      }
+      const innerObject = JSON.parse(innerText) as { id?: string };
+      objectMetadataId = innerObject.id;
+      if (!objectMetadataId) {
+        throw new Error(
+          `round-trip.test: CREATE_OBJECT succeeded but no objectMetadataId returned. Inner payload: ${innerText}`,
+        );
+      }
+    });
+
+    afterAll(async () => {
+      if (objectMetadataId) {
+        await client.graphqlMutation(
+          'mutation DeleteObject($input: DeleteOneObjectInput!) { deleteOneObject(input: $input) { id } }',
+          { input: { id: objectMetadataId } },
+          'metadata',
+        );
+      }
+    });
+
+    it('search_records on embedded-acronym object routes to find_my_a_p_i_key_fixtures (NOT find_myapikeyfixtures)', async () => {
+      const result = await crm.searchRecords({
+        object: objNamePlural,
+        limit: 5,
+      });
+      const parsed = JSON.parse(
+        (result.content[0] as { type: 'text'; text: string }).text,
+      );
+      // Before-fix failure mode: "Tool \"find_myapikeyfixtures\" not found"
+      // After-fix: success with an empty result set on a fresh object.
+      expect(parsed.success).toBe(true);
+    });
+
+    it('create_record on embedded-acronym object routes to create_my_a_p_i_key_fixture', async () => {
+      const result = await crm.createRecord({
+        object: objNameSingular,
+        data: { name: 'issue-12-test-row' },
+      });
+      const parsed = JSON.parse(
+        (result.content[0] as { type: 'text'; text: string }).text,
+      );
+      expect(parsed.success).toBe(true);
+      expect(parsed.result?.id).toBeTruthy();
+      createdRecordId = parsed.result.id as string;
+    });
+
+    it('get_record on embedded-acronym object routes to find_one_my_a_p_i_key_fixture', async () => {
+      if (!createdRecordId)
+        throw new Error('createdRecordId not set — create test must precede');
+      const result = await crm.getRecord({
+        object: objNameSingular,
+        id: createdRecordId,
+      });
+      const parsed = JSON.parse(
+        (result.content[0] as { type: 'text'; text: string }).text,
+      );
+      expect(parsed.success).toBe(true);
+      const record = (parsed.result as { records?: Array<{ id: string }> })
+        ?.records?.[0];
+      expect(record?.id).toBe(createdRecordId);
+    });
+
+    it('update_record on embedded-acronym object routes to update_my_a_p_i_key_fixture', async () => {
+      if (!createdRecordId) throw new Error('createdRecordId not set');
+      const result = await crm.updateRecord({
+        object: objNameSingular,
+        id: createdRecordId,
+        data: { name: 'issue-12-test-row-updated' },
+      });
+      const parsed = JSON.parse(
+        (result.content[0] as { type: 'text'; text: string }).text,
+      );
+      expect(parsed.success).toBe(true);
+    });
+
+    it('delete_record on embedded-acronym object routes to delete_my_a_p_i_key_fixture', async () => {
+      if (!createdRecordId) throw new Error('createdRecordId not set');
+      const result = await crm.deleteRecord({
+        object: objNameSingular,
+        id: createdRecordId,
+      });
+      const parsed = JSON.parse(
+        (result.content[0] as { type: 'text'; text: string }).text,
+      );
+      expect(parsed.success).toBe(true);
+    });
+
+    it('also routes for singular-form input (myAPIKeyFixture) → resolves to find_my_a_p_i_key_fixtures', async () => {
+      const result = await crm.searchRecords({
+        object: objNameSingular,
+        limit: 5,
+      });
+      const parsed = JSON.parse(
+        (result.content[0] as { type: 'text'; text: string }).text,
+      );
+      expect(parsed.success).toBe(true);
+    });
+  },
+);
+
+/**
+ * Mass-noun custom object CRUD — issue #13.
+ * Creates a custom object whose nameSingular is a mass noun (`companyAnalyticsFixture`
+ * uses nameSingular and namePlural with the same camelToSnakeCase result).
+ * Proves the wrapper routes singular ops to create_company_analytics_fixture
+ * (using server-stored nameSingular directly) NOT create_company_analytic_fixture
+ * (what the old pluralize.singular would have produced).
+ */
+describeIfDestructive(
+  'integration: mass-noun custom object CRUD (issue #13)',
+  () => {
+    if (enabled && destructiveOk && !apiKey) {
+      throw new Error('TWENTY_MCP_INTEGRATION=1 but TWENTY_API_KEY is not set');
+    }
+
+    const client = new TwentyMcpClient({ baseUrl, apiKey });
+    // Use a mass-noun stem: Twenty will store nameSingular='companyAnalyticsFixture'
+    // and namePlural='companyAnalyticsFixtures'. The server uses camelToSnakeCase on
+    // both: 'company_analytics_fixture' and 'company_analytics_fixtures'.
+    // The old pluralize.singular('company_analytics_fixture') would have returned
+    // 'company_analytic_fixture' — the wrong tool name.
+    const objNameSingular = 'companyAnalyticsFixture';
+    const objNamePlural = 'companyAnalyticsFixtures';
+    let objectMetadataId: string | undefined;
+    let createdRecordId: string | undefined;
+
+    const metadata = buildMetadataHandlers(client, apiKey);
+    const crm = buildCrmHandlers(client);
+
+    beforeAll(async () => {
+      if (!enabled || !destructiveOk) return;
+      // Defensive cleanup.
+      const existing = await metadata.metadataQuery({
+        kind: 'objects',
+        args: { limit: 200 },
+      });
+      const existingText = (
+        existing.content[0] as { type: 'text'; text: string }
+      ).text;
+      const existingObjects = parseInnerOrGraphqlArray<{
+        id: string;
+        nameSingular: string;
+      }>(existingText);
+      const stale = existingObjects.find(
+        (o) => o.nameSingular === objNameSingular,
+      );
+      if (stale) {
+        await client.graphqlMutation(
+          'mutation DeleteObject($input: DeleteOneObjectInput!) { deleteOneObject(input: $input) { id } }',
+          { input: { id: stale.id } },
+          'metadata',
+        );
+      }
+
+      // Create the mass-noun custom object.
+      const result = await metadata.metadataApplyPlan({
+        mutations: [
+          {
+            key: 'create_company_analytics_fixture',
+            op: 'CREATE_OBJECT',
+            args: {
+              nameSingular: objNameSingular,
+              namePlural: objNamePlural,
+              labelSingular: 'Company Analytics Fixture',
+              labelPlural: 'Company Analytics Fixtures',
+              icon: 'IconChartBar',
+              description:
+                'Temporary fixture for issue #13 integration test. Safe to delete.',
+            },
+          },
+        ],
+      });
+      const parsed = JSON.parse(
+        (result.content[0] as { type: 'text'; text: string }).text,
+      );
+      if (parsed.failed) {
+        throw new Error(
+          `round-trip.test: failed to bootstrap companyAnalyticsFixture object: ${JSON.stringify(parsed.failed)}`,
+        );
+      }
+      const appliedEntry = parsed.applied?.[0]?.result as
+        | { content?: Array<{ type: string; text: string }>; isError?: boolean }
+        | undefined;
+      const innerText = appliedEntry?.content?.[0]?.text;
+      if (!innerText) {
+        throw new Error(
+          `round-trip.test: CREATE_OBJECT applied entry has no inner text. Got: ${JSON.stringify(parsed.applied?.[0])}`,
+        );
+      }
+      const innerObject = JSON.parse(innerText) as { id?: string };
+      objectMetadataId = innerObject.id;
+      if (!objectMetadataId) {
+        throw new Error(
+          `round-trip.test: CREATE_OBJECT succeeded but no objectMetadataId returned. Inner payload: ${innerText}`,
+        );
+      }
+    });
+
+    afterAll(async () => {
+      if (objectMetadataId) {
+        await client.graphqlMutation(
+          'mutation DeleteObject($input: DeleteOneObjectInput!) { deleteOneObject(input: $input) { id } }',
+          { input: { id: objectMetadataId } },
+          'metadata',
+        );
+      }
+    });
+
+    it('search_records on mass-noun object routes to find_company_analytics_fixtures (NOT find_company_analytic_fixtures)', async () => {
+      const result = await crm.searchRecords({
+        object: objNamePlural,
+        limit: 5,
+      });
+      const parsed = JSON.parse(
+        (result.content[0] as { type: 'text'; text: string }).text,
+      );
+      expect(parsed.success).toBe(true);
+    });
+
+    it('create_record routes to create_company_analytics_fixture (NOT create_company_analytic_fixture, issue #13)', async () => {
+      const result = await crm.createRecord({
+        object: objNameSingular,
+        data: { name: 'issue-13-test-row' },
+      });
+      const parsed = JSON.parse(
+        (result.content[0] as { type: 'text'; text: string }).text,
+      );
+      // Before-fix failure mode: "Tool \"create_company_analytic_fixture\" not found"
+      // After-fix: routes to create_company_analytics_fixture via server-stored nameSingular.
+      expect(parsed.success).toBe(true);
+      expect(parsed.result?.id).toBeTruthy();
+      createdRecordId = parsed.result.id as string;
+    });
+
+    it('get_record routes to find_one_company_analytics_fixture (NOT find_one_company_analytic_fixture)', async () => {
+      if (!createdRecordId)
+        throw new Error('createdRecordId not set — create test must precede');
+      const result = await crm.getRecord({
+        object: objNameSingular,
+        id: createdRecordId,
+      });
+      const parsed = JSON.parse(
+        (result.content[0] as { type: 'text'; text: string }).text,
+      );
+      expect(parsed.success).toBe(true);
+      const record = (parsed.result as { records?: Array<{ id: string }> })
+        ?.records?.[0];
+      expect(record?.id).toBe(createdRecordId);
+    });
+
+    it('update_record routes to update_company_analytics_fixture', async () => {
+      if (!createdRecordId) throw new Error('createdRecordId not set');
+      const result = await crm.updateRecord({
+        object: objNameSingular,
+        id: createdRecordId,
+        data: { name: 'issue-13-test-row-updated' },
+      });
+      const parsed = JSON.parse(
+        (result.content[0] as { type: 'text'; text: string }).text,
+      );
+      expect(parsed.success).toBe(true);
+    });
+
+    it('delete_record routes to delete_company_analytics_fixture', async () => {
+      if (!createdRecordId) throw new Error('createdRecordId not set');
+      const result = await crm.deleteRecord({
+        object: objNameSingular,
+        id: createdRecordId,
+      });
+      const parsed = JSON.parse(
+        (result.content[0] as { type: 'text'; text: string }).text,
+      );
+      expect(parsed.success).toBe(true);
+    });
+  },
+);

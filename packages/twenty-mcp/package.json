@@ -13,6 +13,7 @@
     "ajv": "^8.17.1",
     "dotenv": "^16.4.5",
     "pluralize": "^8.0.0",
+    "twenty-shared": "workspace:*",
     "zod": "^4.1.11"
   },
   "devDependencies": {

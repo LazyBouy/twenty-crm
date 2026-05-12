@@ -87,10 +87,32 @@ const makeCapturingClient = (): {
 } => {
   let inner: { toolName: string; args: Record<string, unknown> } | undefined;
   let gql: { query: string; variables: Record<string, unknown> } | undefined;
+  // Standard objects the contract tests use — must include all objects referenced
+  // in the CRM contract tests below (people→person, companies→company, etc.).
+  const contractMetadataObjects = [
+    { nameSingular: 'person', namePlural: 'people' },
+    { nameSingular: 'company', namePlural: 'companies' },
+    { nameSingular: 'opportunity', namePlural: 'opportunities' },
+    { nameSingular: 'note', namePlural: 'notes' },
+    { nameSingular: 'task', namePlural: 'tasks' },
+    { nameSingular: 'message', namePlural: 'messages' },
+  ];
+  const metadataText = JSON.stringify({ result: contractMetadataObjects });
+
   const client = {
     toolsCall: jest
       .fn()
       .mockImplementation((name: string, args: Record<string, unknown>) => {
+        if (
+          name === 'execute_tool' &&
+          args.toolName === 'get_object_metadata'
+        ) {
+          // resolveObjectNames calls execute_tool({toolName:'get_object_metadata'}) to get
+          // nameSingular/namePlural for each CRM handler invocation.
+          return Promise.resolve({
+            content: [{ type: 'text', text: metadataText }],
+          });
+        }
         if (name === 'execute_tool') {
           inner = {
             toolName: args.toolName as string,
@@ -102,11 +124,13 @@ const makeCapturingClient = (): {
       }),
     graphqlMutation: jest
       .fn()
-      .mockImplementation((query: string, variables: Record<string, unknown>) => {
-        gql = { query, variables };
+      .mockImplementation(
+        (query: string, variables: Record<string, unknown>) => {
+          gql = { query, variables };
 
-        return Promise.resolve({});
-      }),
+          return Promise.resolve({});
+        },
+      ),
   } as unknown as TwentyMcpClient;
 
   return {
@@ -124,7 +148,10 @@ const makeCapturingClient = (): {
   };
 };
 
-const assertContract = (innerToolName: string, args: Record<string, unknown>): void => {
+const assertContract = (
+  innerToolName: string,
+  args: Record<string, unknown>,
+): void => {
   const key = fixtureKey(innerToolName);
   const entry = fixture.tools[key];
   if (!entry) {
@@ -333,7 +360,15 @@ describe('contract: wrapper output shape vs Twenty inner-tool schemas', () => {
       await wf.workflowCreateComplete({
         name: 'Demo',
         trigger: { type: 'MANUAL' },
-        steps: [{ id: 's1', name: 'Step 1', type: 'CODE', valid: false, settings: {} }],
+        steps: [
+          {
+            id: 's1',
+            name: 'Step 1',
+            type: 'CODE',
+            valid: false,
+            settings: {},
+          },
+        ],
       });
       const captured = cap.lastInner();
       expect(captured.toolName).toBe('create_complete_workflow');
@@ -370,10 +405,16 @@ describe('contract: wrapper output shape vs Twenty inner-tool schemas', () => {
     it('accessUpdateRole reshapes flat input into {id, update: {...}}', async () => {
       const cap = makeCapturingClient();
       const ax = buildAccessHandlers(cap.client);
-      await ax.accessUpdateRole({ id: '00000000-0000-0000-0000-000000000000', label: 'X' });
+      await ax.accessUpdateRole({
+        id: '00000000-0000-0000-0000-000000000000',
+        label: 'X',
+      });
       const { variables } = cap.lastGraphql();
       expect(variables).toMatchObject({
-        input: { id: '00000000-0000-0000-0000-000000000000', update: { label: 'X' } },
+        input: {
+          id: '00000000-0000-0000-0000-000000000000',
+          update: { label: 'X' },
+        },
       });
     });
 

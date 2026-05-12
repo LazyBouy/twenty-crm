@@ -1,7 +1,22 @@
-import pluralize from 'pluralize';
 import { z } from 'zod';
 
+import { parseInnerOrGraphqlArray } from '../utils/parse-metadata-array';
 import type { ToolsCallResult, TwentyMcpClient } from '../twenty-mcp-client';
+
+/**
+ * Canonical camelToSnakeCase algorithm — matches twenty-shared/src/utils/strings/camelToSnakeCase.ts
+ * and packages/twenty-server/.../database-tool.provider.ts's tool-name registration.
+ * Defined locally because twenty-shared has no compiled dist/ in this monorepo checkout;
+ * import from 'twenty-shared/utils' once that package is built (follow-up).
+ *
+ * Algorithm: insert `_` before every uppercase letter, then lowercase the whole string.
+ * For 'iOSDevice' → '_i_o_s_device' → trim leading _ → 'i_o_s_device'.
+ * Twenty server registers 'i_o_s_device' not 'iosdevice'. This is the fix for #12.
+ */
+// TODO: replace with `import { camelToSnakeCase } from 'twenty-shared/utils'` once
+// twenty-shared dist/ is compiled (see issue #12 Implementation notes).
+const camelToSnakeCase = (str: string): string =>
+  str.replace(/[A-Z]/g, (letter) => `_${letter.toLowerCase()}`);
 
 /**
  * Twenty exposes per-object CRUD tools using a predictable naming pattern derived
@@ -12,8 +27,10 @@ import type { ToolsCallResult, TwentyMcpClient } from '../twenty-mcp-client';
  *   update → update_person
  *   delete → delete_person
  *
- * The agent can pass either the plural or singular form of `object` — we normalize
- * both via the `pluralize` package, so "people" and "person" both route correctly.
+ * The agent can pass any casing/form of the object name — resolveObjectNames()
+ * fetches the authoritative {nameSingular, namePlural} from server metadata via
+ * metadata_query({kind: 'objects'}) and applies camelToSnakeCase directly.
+ * This eliminates both the embedded-acronym bug (#12) and the mass-noun bug (#13).
  *
  * SHAPE CONTRACT (verified against Twenty source — see audit in PLAN.md):
  *  - find_<plural>:  { limit?, offset?, orderBy?, …top-level field filters, or?, and?, not? }
@@ -26,41 +43,113 @@ import type { ToolsCallResult, TwentyMcpClient } from '../twenty-mcp-client';
  * Zod-checkable shape, and the handlers spread them into the inner-tool call
  * to satisfy Twenty's flat schemas.
  */
-const normalize = (object: string): { singular: string; plural: string } => {
-  // Insert underscores at camelCase boundaries BEFORE lowercasing, so
-  // multi-word custom objects (`schemaChangeAudits` → `schema_change_audits`)
-  // match Twenty server's tool names (registered via camelToSnakeCase in
-  // packages/twenty-server/.../database-tool.provider.ts). Without this,
-  // toLowerCase strips word boundaries and pluralize is a no-op, producing
-  // `find_schemachangeaudits` instead of `find_schema_change_audits`.
-  // See issue #11 for the full failure mode.
-  const snakeified = object
-    .trim()
-    .replace(/\s+/g, '_')
-    .replace(/([a-z0-9])([A-Z])/g, '$1_$2')
-    .toLowerCase();
-  return {
-    singular: pluralize.singular(snakeified),
-    plural: pluralize.plural(snakeified),
-  };
+
+type ObjectMetadataItem = {
+  nameSingular: string;
+  namePlural: string;
 };
 
-export const innerToolName = (
+/**
+ * Fetch the authoritative {nameSingular, namePlural} for the given agent-supplied
+ * object name from the workspace's objectMetadata list.
+ *
+ * Matching is case-insensitive and accepts any of:
+ *   - nameSingular / namePlural (as stored)
+ *   - camelToSnakeCase(nameSingular) / camelToSnakeCase(namePlural) (snake forms)
+ *   - lowercased equivalents of any of the above
+ *
+ * If two objects match under case-insensitive comparison, throws a disambiguation
+ * error naming both matches (the user must then pass the exact nameSingular or
+ * namePlural to disambiguate).
+ *
+ * If no match: throws a descriptive error listing available object names.
+ *
+ * NOTE: adds one network round-trip per CRUD call (~5–20 ms on local stack).
+ * TODO: add in-process TTL cache — see follow-up (issue #12 Implementation notes).
+ */
+export const resolveObjectNames = async (
+  client: TwentyMcpClient,
+  input: string,
+): Promise<{ nameSingular: string; namePlural: string }> => {
+  let objectList: ObjectMetadataItem[];
+
+  try {
+    // Fetch object metadata via Twenty's inner tool. `metadata_query({kind:'objects'})`
+    // in the proxy routes to execute_tool({toolName:'get_object_metadata'}) on Twenty's
+    // /mcp endpoint — we call it directly here since crm.ts runs inside the proxy.
+    const result = await client.toolsCall('execute_tool', {
+      toolName: 'get_object_metadata',
+      arguments: {},
+    });
+    const text = (result.content[0] as { type: 'text'; text: string }).text;
+    objectList = parseInnerOrGraphqlArray<ObjectMetadataItem>(text);
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    throw new Error(
+      `Failed to fetch object metadata for resolving '${input}': ${message}. ` +
+        `Verify the MCP server can reach Twenty.`,
+    );
+  }
+
+  const needle = input.trim().toLowerCase();
+
+  const candidates: ObjectMetadataItem[] = [];
+
+  for (const obj of objectList) {
+    const forms = [
+      obj.nameSingular,
+      obj.namePlural,
+      camelToSnakeCase(obj.nameSingular),
+      camelToSnakeCase(obj.namePlural),
+    ].map((f) => f.toLowerCase());
+
+    if (forms.includes(needle)) {
+      candidates.push(obj);
+    }
+  }
+
+  if (candidates.length === 1) {
+    return { nameSingular: candidates[0].nameSingular, namePlural: candidates[0].namePlural };
+  }
+
+  if (candidates.length > 1) {
+    const names = candidates.map((c) => `'${c.nameSingular}' / '${c.namePlural}'`).join(', ');
+    throw new Error(
+      `Object '${input}' is ambiguous — matches multiple objects: ${names}. ` +
+        `Pass the exact nameSingular or namePlural to disambiguate.`,
+    );
+  }
+
+  const available = objectList.map((o) => o.nameSingular).join(', ');
+  throw new Error(
+    `Object '${input}' not found in workspace. Available objects: [${available}]. ` +
+      `Use discovery({focus: 'find_...'}) to inspect schemas.`,
+  );
+};
+
+/**
+ * Construct the inner Twenty tool name from already-resolved snake-cased
+ * singular/plural forms and the CRUD operation.
+ *
+ * This is a pure synchronous function — callers must await resolveObjectNames
+ * first to obtain the snake forms.
+ */
+export const buildToolName = (
   op: 'search' | 'get' | 'create' | 'update' | 'delete',
-  object: string,
+  snakeSingular: string,
+  snakePlural: string,
 ): string => {
-  const { singular, plural } = normalize(object);
   switch (op) {
     case 'search':
-      return `find_${plural}`;
+      return `find_${snakePlural}`;
     case 'get':
-      return `find_one_${singular}`;
+      return `find_one_${snakeSingular}`;
     case 'create':
-      return `create_${singular}`;
+      return `create_${snakeSingular}`;
     case 'update':
-      return `update_${singular}`;
+      return `update_${snakeSingular}`;
     case 'delete':
-      return `delete_${singular}`;
+      return `delete_${snakeSingular}`;
   }
 };
 
@@ -144,25 +233,48 @@ const wrapInExecute = async (
   client.toolsCall('execute_tool', { toolName: innerName, arguments: args });
 
 export const buildCrmHandlers = (client: TwentyMcpClient) => ({
-  searchRecords: (args: z.infer<typeof searchInputSchema>) => {
+  searchRecords: async (args: z.infer<typeof searchInputSchema>) => {
     const { object, filter, ...rest } = args;
+    const { nameSingular, namePlural } = await resolveObjectNames(client, object);
+    const snakeSingular = camelToSnakeCase(nameSingular);
+    const snakePlural = camelToSnakeCase(namePlural);
 
-    return wrapInExecute(client, innerToolName('search', object), {
+    return wrapInExecute(client, buildToolName('search', snakeSingular, snakePlural), {
       ...rest,
       ...(filter ?? {}),
     });
   },
-  getRecord: (args: z.infer<typeof getInputSchema>) =>
-    wrapInExecute(client, innerToolName('get', args.object), { id: args.id }),
-  createRecord: (args: z.infer<typeof createInputSchema>) =>
-    wrapInExecute(client, innerToolName('create', args.object), args.data),
-  updateRecord: (args: z.infer<typeof updateInputSchema>) =>
-    wrapInExecute(client, innerToolName('update', args.object), {
+  getRecord: async (args: z.infer<typeof getInputSchema>) => {
+    const { nameSingular, namePlural } = await resolveObjectNames(client, args.object);
+    const snakeSingular = camelToSnakeCase(nameSingular);
+    const snakePlural = camelToSnakeCase(namePlural);
+    return wrapInExecute(client, buildToolName('get', snakeSingular, snakePlural), {
+      id: args.id,
+    });
+  },
+  createRecord: async (args: z.infer<typeof createInputSchema>) => {
+    const { nameSingular, namePlural } = await resolveObjectNames(client, args.object);
+    const snakeSingular = camelToSnakeCase(nameSingular);
+    const snakePlural = camelToSnakeCase(namePlural);
+    return wrapInExecute(client, buildToolName('create', snakeSingular, snakePlural), args.data);
+  },
+  updateRecord: async (args: z.infer<typeof updateInputSchema>) => {
+    const { nameSingular, namePlural } = await resolveObjectNames(client, args.object);
+    const snakeSingular = camelToSnakeCase(nameSingular);
+    const snakePlural = camelToSnakeCase(namePlural);
+    return wrapInExecute(client, buildToolName('update', snakeSingular, snakePlural), {
       id: args.id,
       ...args.data,
-    }),
-  deleteRecord: (args: z.infer<typeof deleteInputSchema>) =>
-    wrapInExecute(client, innerToolName('delete', args.object), { id: args.id }),
+    });
+  },
+  deleteRecord: async (args: z.infer<typeof deleteInputSchema>) => {
+    const { nameSingular, namePlural } = await resolveObjectNames(client, args.object);
+    const snakeSingular = camelToSnakeCase(nameSingular);
+    const snakePlural = camelToSnakeCase(namePlural);
+    return wrapInExecute(client, buildToolName('delete', snakeSingular, snakePlural), {
+      id: args.id,
+    });
+  },
 });
 
 export const crmToolDefinitions = {
@@ -201,3 +313,4 @@ export const crmToolDefinitions = {
     annotations: { destructiveHint: true, idempotentHint: true },
   },
 } as const;
+
