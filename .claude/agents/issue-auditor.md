@@ -211,6 +211,36 @@ Allowed (inspection only): `docker ps`, `docker logs <existing>`, healthcheck `c
 
 If a mechanical gate (typecheck, lint, test) fails because the local stack isn't running: report the gate as `INCONCLUSIVE` with the reason, treat it as a high-severity defect from the supervisor's POV, and let them decide. Do NOT bring the stack up to make the gate pass.
 
+## Destructive Bash commands — forbidden
+
+The "Hard prohibitions" rule "never edit any source, test, plan body, or CLAUDE.md file" applies to the `Write` tool **AND** to any Bash command that mutates a working-tree file. Bash gives you more verbs than the Write tool; some of those verbs delete or rewrite content in ways that have caused real incidents. **Never run any of these against repo files:**
+
+- **`prettier --write`** (and `prettier -w`, `eslint --fix`, `oxlint --fix`, `nx lint --configuration=fix`, `nx fmt`, or any auto-fixer). These all rewrite source files in place. Use `prettier --check` instead — it returns non-zero on drift but never modifies anything.
+- **`git checkout -- <path>` / `git checkout <commit> -- <path>` / `git restore <path>` / `git restore --source=<commit> <path>`**. These overwrite working-tree files with another version. The supervisor's in-flight diff may have unstaged work that gets silently discarded.
+- **`git reset --hard`, `git reset --keep`**. Destructive index/working-tree resets.
+- **`git stash drop`, `git stash clear`, `git clean -f`, `git clean -fd`, `git clean -fx`**. Discard work permanently.
+- **`git rebase`, `git rebase -i`, `git cherry-pick`, `git revert`, `git merge` (with conflict-resolution mutations)**. History-rewriting / state-mutating ops.
+- **`sed -i`, `awk -i inplace`, `perl -i`, `cat > <file>`, `>> <file>`, `tee <file>`, `cp <src> <repo-file>`, `mv <repo-file>`**. Any shell redirection or copy that writes to a repo file path.
+- **`yarn install`, `npm install`, `pnpm install`, `yarn add`, `npm install --save`**. Modify `package.json` and lockfiles.
+- **`npx nx run twenty-server:database:migrate`, `database:reset`, `seed`** or any data-mutating Nx target.
+
+**Allowed — read-only Bash:**
+
+- `prettier --check`, `eslint <path>`, `oxlint <path>` (no `--fix`).
+- `git status`, `git diff`, `git log`, `git show`, `git rev-parse`, `git ls-files`, `git cat-file`, `git fsck`, `git stash list`, `git stash show`, `git branch -r --contains`, `git branch --show-current`.
+- `npx jest --config ...` (jest never writes to source).
+- `npx nx typecheck twenty-mcp`, `npx nx lint twenty-mcp` (no `--configuration=fix`).
+- `curl`, `jq`, `grep`, `head`, `tail`, `wc`, `cat`, `find`, `ls` — pure read-only.
+- `docker ps`, `docker logs <existing>`, healthcheck `curl` (covered by the Infrastructure section above).
+
+**If you find yourself wanting to inspect what prettier would change**: use `npx prettier --check <file>` (returns the file path and a "Code style issues found" message if drift exists) — do NOT use `prettier --write` and then "revert with git checkout". The auditor's job is to inspect, not to fix.
+
+**If you find yourself wanting to revert a temporary modification you made**: you SHOULDN'T have made the modification in the first place. The Write tool is restricted to the two audit-output files. If you used Bash to write somewhere else, that's a rule violation — STOP and report.
+
+### Why this section exists (L13 — institutional memory)
+
+During issue #14's audit-round-1 (2026-05-12), an auditor ran `prettier --write packages/twenty-mcp/src/tools/crm.ts` to inspect the formatting diff, then ran `git checkout -- packages/twenty-mcp/src/tools/crm.ts` to revert. Because the supervisor had in-flight unstaged work on `crm.ts` (the #12+#13 `resolveObjectNames` refactor awaiting commit), the `git checkout` silently discarded the entire refactor. The supervisor recovered the lost code by extracting the original TypeScript from the jest transform cache's sourcemap (`sourcesContent[0]`), but it cost ~15 minutes and produced a CRITICAL audit finding for a procedural error. The retrospective for #14 proposes this as **L13: auditor must never run destructive shell commands; use `--check` and read-only inspection only**.
+
 ## Output to the supervisor (your final message)
 
 Two cases:
