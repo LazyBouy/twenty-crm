@@ -3,7 +3,7 @@
 > Issue(s): #14
 > Plan: packages/twenty-mcp/plans/issue-14-low-sweep.md
 > Audit cycles: 2 (round 1 hit an auditor-self-inflicted incident; round 2 confirmed recovery + clean)
-> Commit: pending — filled by closer post-commit
+> Commit: 7347421b0c
 > Written: 2026-05-12T15:10:12Z
 
 ## Forecast vs actual
@@ -76,25 +76,21 @@ Each lesson below proposes an ingrain target. The supervisor decides whether to 
 ## Diff summary
 
 ```
- packages/twenty-mcp/lib/index.js                                  |    0
- packages/twenty-mcp/package.json                                  |    1 +
- packages/twenty-mcp/plans/...-camelcase-boundary-retrospective.md |   18 +-
- packages/twenty-mcp/plans/low-backlog.md                          |   18 +-
- packages/twenty-mcp/src/__tests__/contract.test.ts                |   57 +-
- packages/twenty-mcp/src/__tests__/crm-coverage.test.ts            |  344 +++++--
- packages/twenty-mcp/src/__tests__/crm.test.ts                     |  356 +++++--
- packages/twenty-mcp/src/__tests__/fixtures/inner-tool-schemas.json|   37 +-
- packages/twenty-mcp/src/__tests__/integration/round-trip.test.ts  | 1003 ++++++++++++++------
- packages/twenty-mcp/src/__tests__/metadata.test.ts                |  374 ++++++--
- packages/twenty-mcp/src/__tests__/parse-metadata-array.test.ts    |   33 +-
- packages/twenty-mcp/src/__tests__/sdk-boundary.test.ts            |   86 +-
- packages/twenty-mcp/src/__tests__/views-coverage.test.ts          |  134 ++-
- packages/twenty-mcp/src/__tests__/views.test.ts                   |  118 ++-
- packages/twenty-mcp/src/tools/crm.ts                              |  191 +++-
- packages/twenty-mcp/src/tools/metadata.ts                         |  181 +++-
- packages/twenty-mcp/src/tools/views.ts                            |  192 +++-
- packages/twenty-mcp/src/utils/parse-metadata-array.ts             |   25 +-
- 18 files changed, 2432 insertions(+), 736 deletions(-)
+ .../plans/issue-14-low-sweep-audit-round-1.md      | 142 +++++
+ .../plans/issue-14-low-sweep-audit-round-2.md      | 107 ++++
+ .../plans/issue-14-low-sweep-retrospective.md      | 100 ++++
+ packages/twenty-mcp/plans/issue-14-low-sweep.md    | 424 +++++++++++++
+ packages/twenty-mcp/plans/low-backlog.md           |  15 +-
+ .../src/__tests__/integration/round-trip.test.ts   | 660 ++++++++++++---------
+ packages/twenty-mcp/src/__tests__/metadata.test.ts | 374 +++++++++---
+ .../src/__tests__/parse-metadata-array.test.ts     |  33 +-
+ .../twenty-mcp/src/__tests__/sdk-boundary.test.ts  |  86 ++-
+ .../src/__tests__/views-coverage.test.ts           | 134 ++++-
+ packages/twenty-mcp/src/__tests__/views.test.ts    | 118 +++-
+ packages/twenty-mcp/src/tools/metadata.ts          | 181 ++++--
+ packages/twenty-mcp/src/tools/views.ts             | 192 ++++--
+ .../twenty-mcp/src/utils/parse-metadata-array.ts   |  25 +-
+ 14 files changed, 2047 insertions(+), 544 deletions(-)
 ```
 
-(Note: the full stat above includes #12+#13 in-flight changes co-committed with the #14 sweep. The #14 plan's own scope was the 7 files listed in its Implementation notes "Files changed" block; the rest belong to #12+#13.)
+(Note: this stat is from the #14 sweep commit itself, including the plan + retrospective + audit-round files. The implementation touched 7 files per the plan's scope; the three audit-round documents (#1 BLOCKED incident, #2 CLEAN post-recovery) are separate artifacts written during the audit cycle and committed with the fix.)

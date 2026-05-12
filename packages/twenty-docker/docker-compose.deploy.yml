@@ -2,7 +2,7 @@ name: twenty-deploy
 
 services:
   server:
-    image: twentycrm/twenty:${TAG:-latest}
+    image: ghcr.io/lazybouy/twenty:${TAG:-v2.4.0-fork}
     volumes:
       - server-local-data:/app/packages/twenty-server/.local-storage
     ports:
@@ -34,7 +34,7 @@ services:
     restart: always
 
   worker:
-    image: twentycrm/twenty:${TAG:-latest}
+    image: ghcr.io/lazybouy/twenty:${TAG:-v2.4.0-fork}
     volumes:
       - server-local-data:/app/packages/twenty-server/.local-storage
     command: ["yarn", "worker:prod"]

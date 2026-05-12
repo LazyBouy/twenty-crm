@@ -3,7 +3,7 @@
 > Issue(s): #12 (grouped: #13)
 > Plan: packages/twenty-mcp/plans/issue-12-crm-wrapper-name-inference-replace-with-server-metadata.md
 > Audit cycles: 1 (final clean pass)
-> Commit: pending — filled by closer post-commit
+> Commit: 266442b77f90ccc8a6ca0de2fbd6dc2961c2ab46
 > Written: 2026-05-12T00:00:00Z
 
 ## Forecast vs actual
@@ -64,13 +64,17 @@ For each lesson, propose where it should ingrain. The supervisor decides whether
 ## Diff summary
 
 ```
- packages/twenty-mcp/package.json                                   |   1 +
- packages/twenty-mcp/src/__tests__/contract.test.ts                 |  19 ++
- packages/twenty-mcp/src/__tests__/crm-coverage.test.ts             | 338 ++++++++++++++++-----
- packages/twenty-mcp/src/__tests__/crm.test.ts                      | 292 ++++++++++++++----
- packages/twenty-mcp/src/__tests__/fixtures/inner-tool-schemas.json |  37 ++-
- packages/twenty-mcp/src/__tests__/integration/round-trip.test.ts   | 287 ++++++++++++++++-
- packages/twenty-mcp/src/tools/crm.ts                               | 190 +++++++++---
- yarn.lock                                                          |   4 +
- 8 files changed, ~1168 insertions(+), ~201 deletions(-)
+ packages/twenty-mcp/package.json                   |   1 +
+ packages/twenty-mcp/plans/issue-12-crm-wrapper-name-inference-replace-with-server-metadata-audit-round-1.md | 112 ++++++
+ packages/twenty-mcp/plans/issue-12-crm-wrapper-name-inference-replace-with-server-metadata-retrospective.md |  76 ++++
+ packages/twenty-mcp/plans/issue-12-crm-wrapper-name-inference-replace-with-server-metadata.md | 405 +++++++++++++++++++++
+ packages/twenty-mcp/plans/low-backlog.md           |   3 +
+ packages/twenty-mcp/src/__tests__/contract.test.ts |  57 ++-
+ packages/twenty-mcp/src/__tests__/crm-coverage.test.ts  | 344 +++++++++++++----
+ packages/twenty-mcp/src/__tests__/crm.test.ts      | 356 +++++++++++++++---
+ packages/twenty-mcp/src/__tests__/fixtures/inner-tool-schemas.json |  37 +-
+ packages/twenty-mcp/src/__tests__/integration/round-trip.test.ts   | 359 ++++++++++++++++++
+ packages/twenty-mcp/src/tools/crm.ts               | 191 ++++++++--
+ yarn.lock                                          |   4 +
+ 12 files changed, 1752 insertions(+), 193 deletions(-)
 ```
