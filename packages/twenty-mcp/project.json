@@ -41,7 +41,30 @@
         "commands": ["NODE_ENV=test jest --testTimeout 10000"]
       }
     },
-    "lint": {},
+    "lint": {
+      "executor": "nx:run-commands",
+      "options": {
+        "cwd": "{projectRoot}",
+        "command": "prettier src/ --check --cache --cache-location ../../.cache/prettier/{projectRoot} --cache-strategy metadata || (echo 'ERROR: Prettier formatting check failed! Fix with: npx nx lint twenty-mcp --configuration=fix' && false)"
+      },
+      "configurations": {
+        "fix": {
+          "command": "prettier src/ --write --cache --cache-location ../../.cache/prettier/{projectRoot} --cache-strategy metadata"
+        }
+      }
+    },
+    "lint:diff-with-main": {
+      "executor": "nx:run-commands",
+      "options": {
+        "cwd": "{projectRoot}",
+        "command": "FILES=$(git diff --name-only --relative --diff-filter=d main...HEAD -- src/ | grep -E '\\.(ts|tsx)$'); [ -z \"$FILES\" ] && echo 'No changed files.' || (prettier --check $FILES || (echo 'ERROR: Prettier formatting check failed! Fix with: npx nx lint:diff-with-main twenty-mcp --configuration=fix' && false))"
+      },
+      "configurations": {
+        "fix": {
+          "command": "FILES=$(git diff --name-only --relative --diff-filter=d main...HEAD -- src/ | grep -E '\\.(ts|tsx)$'); [ -z \"$FILES\" ] && echo 'No changed files.' || prettier --write $FILES"
+        }
+      }
+    },
     "typecheck": {
       "executor": "nx:run-commands",
       "options": {

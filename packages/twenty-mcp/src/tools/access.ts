@@ -106,7 +106,9 @@ export const accessCreateApiKeyInputSchema = z.object({
   name: z.string().min(1),
   expiresAt: z
     .string()
-    .describe('ISO date-time when the key expires. Twenty requires strict YYYY-MM-DDTHH:mm:ssZ format.'),
+    .describe(
+      'ISO date-time when the key expires. Twenty requires strict YYYY-MM-DDTHH:mm:ssZ format.',
+    ),
   roleId: z.string().uuid().describe('Role to bind the key to.'),
 });
 
@@ -222,7 +224,9 @@ const buildRevokeApiKey = (
 // --- Handlers ----------------------------------------------------------------
 
 const wrapGraphqlResult = (data: unknown): ToolsCallResult => ({
-  content: [{ type: 'text', text: JSON.stringify({ success: true, result: data }) }],
+  content: [
+    { type: 'text', text: JSON.stringify({ success: true, result: data }) },
+  ],
   isError: false,
 });
 
@@ -296,11 +300,13 @@ export const buildAccessHandlers = (client: TwentyMcpClient) => ({
 export const accessDispatchEntries: Record<string, DispatchEntry> = {
   CREATE_ROLE: {
     transport: 'graphql',
-    build: (args) => buildCreateRole(args as z.infer<typeof accessCreateRoleInputSchema>),
+    build: (args) =>
+      buildCreateRole(args as z.infer<typeof accessCreateRoleInputSchema>),
   },
   UPDATE_ROLE: {
     transport: 'graphql',
-    build: (args) => buildUpdateRole(args as z.infer<typeof accessUpdateRoleInputSchema>),
+    build: (args) =>
+      buildUpdateRole(args as z.infer<typeof accessUpdateRoleInputSchema>),
   },
   UPSERT_OBJECT_PERMISSION: {
     transport: 'graphql',
@@ -318,15 +324,20 @@ export const accessDispatchEntries: Record<string, DispatchEntry> = {
   },
   INVITE_MEMBERS: {
     transport: 'graphql',
-    build: (args) => buildSendInvitations(args as z.infer<typeof accessSendInvitationsInputSchema>),
+    build: (args) =>
+      buildSendInvitations(
+        args as z.infer<typeof accessSendInvitationsInputSchema>,
+      ),
   },
   CREATE_API_KEY: {
     transport: 'graphql',
-    build: (args) => buildCreateApiKey(args as z.infer<typeof accessCreateApiKeyInputSchema>),
+    build: (args) =>
+      buildCreateApiKey(args as z.infer<typeof accessCreateApiKeyInputSchema>),
   },
   REVOKE_API_KEY: {
     transport: 'graphql',
-    build: (args) => buildRevokeApiKey(args as z.infer<typeof accessRevokeApiKeyInputSchema>),
+    build: (args) =>
+      buildRevokeApiKey(args as z.infer<typeof accessRevokeApiKeyInputSchema>),
   },
 };
 
@@ -343,7 +354,7 @@ export const accessToolDefinitions = {
   access_update_role: {
     title: 'Update a workspace role',
     description:
-      'Update a role\'s label, description, icon, or permission flags. Refuse to modify the calling API key\'s own role (use metadata_get_calling_actor first).',
+      "Update a role's label, description, icon, or permission flags. Refuse to modify the calling API key's own role (use metadata_get_calling_actor first).",
     inputSchema: accessUpdateRoleInputSchema.shape,
     annotations: { destructiveHint: true, idempotentHint: true },
   },

@@ -16,6 +16,33 @@ import { join } from 'node:path';
 
 import { FIELD_TYPE_OPERAND_MAP } from '../tools/views';
 
+/**
+ * Extracts the inner content of a balanced-bracket array starting at `openPos`
+ * in `source`. `openPos` must point at the opening `[`. Returns the content
+ * between the opening `[` and its matching `]` (exclusive of the brackets).
+ * Throws if no matching `]` is found (unbalanced input).
+ */
+export const sliceBalancedBracket = (
+  source: string,
+  openPos: number,
+): string => {
+  let depth = 0;
+  let end = openPos;
+  for (let i = openPos; i < source.length; i++) {
+    if (source[i] === '[') depth++;
+    else if (source[i] === ']') {
+      depth--;
+      if (depth === 0) {
+        end = i;
+        return source.slice(openPos + 1, end);
+      }
+    }
+  }
+  throw new Error(
+    `sliceBalancedBracket: no matching ']' found starting at position ${openPos}`,
+  );
+};
+
 // Path from this file to the twenty-front ground truth.
 // __dirname is packages/twenty-mcp/src/__tests__
 // 3 levels up: packages/twenty-mcp/src → packages/twenty-mcp → packages
@@ -145,20 +172,8 @@ describe('FIELD_TYPE_OPERAND_MAP matches twenty-front FILTER_OPERANDS_MAP', () =
           '[',
           headerMatch.index + headerMatch[0].length - 1,
         );
-        let bDepth = 0;
-        let bEnd = bracketStart;
-        for (let bi = bracketStart; bi < source.length; bi++) {
-          if (source[bi] === '[') bDepth++;
-          else if (source[bi] === ']') {
-            bDepth--;
-            if (bDepth === 0) {
-              bEnd = bi;
-              break;
-            }
-          }
-        }
         // Extract RecordFilterOperand.X members from the spread declaration content.
-        const spreadContent = source.slice(bracketStart + 1, bEnd);
+        const spreadContent = sliceBalancedBracket(source, bracketStart);
         const spreadOpRe = /RecordFilterOperand\.([A-Z_]+)/g;
         let spreadOpMatch: RegExpExecArray | null;
         while ((spreadOpMatch = spreadOpRe.exec(spreadContent)) !== null) {
@@ -176,6 +191,8 @@ describe('FIELD_TYPE_OPERAND_MAP matches twenty-front FILTER_OPERANDS_MAP', () =
     // Confirms the balanced-bracket scan does NOT close on the first ] it finds.
     // A non-greedy [\s\S]*?\] regex would slice at the inner ] and return only
     // 'RecordFilterOperand.FIRST' — the scanner must return all three.
+    // Calls the production sliceBalancedBracket helper (not an inline copy),
+    // so any regression in the production code is caught here.
     const fakeSource = `
       const mySpread = [
         RecordFilterOperand.FIRST,
@@ -191,19 +208,7 @@ describe('FIELD_TYPE_OPERAND_MAP matches twenty-front FILTER_OPERANDS_MAP', () =
       '[',
       (headerMatch!.index ?? 0) + headerMatch![0].length - 1,
     );
-    let depth = 0;
-    let end = bracketStart;
-    for (let i = bracketStart; i < fakeSource.length; i++) {
-      if (fakeSource[i] === '[') depth++;
-      else if (fakeSource[i] === ']') {
-        depth--;
-        if (depth === 0) {
-          end = i;
-          break;
-        }
-      }
-    }
-    const content = fakeSource.slice(bracketStart + 1, end);
+    const content = sliceBalancedBracket(fakeSource, bracketStart);
     const found: string[] = [];
     const re = /RecordFilterOperand\.([A-Z_]+)/g;
     let m: RegExpExecArray | null;

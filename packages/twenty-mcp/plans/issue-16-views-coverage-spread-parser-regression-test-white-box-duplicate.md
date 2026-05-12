@@ -95,3 +95,55 @@ Extract the balanced-bracket scan from the inline closure inside `parseTwentyFro
 - packages/twenty-mcp/src/__tests__/views-coverage.test.ts:143–213 (production scanner + regression test)
 - packages/twenty-mcp/plans/issue-14-low-sweep.md (item 6: the sweep item that introduced the regression test)
 - packages/twenty-mcp/plans/issue-14-low-sweep-audit-round-1.md (audit that identified this as HIGH-2 follow-up filed as issue #16)
+
+## Implementation notes
+> Implemented: 2026-05-12T00:00:00Z
+
+### Files changed
+packages/twenty-mcp/src/__tests__/views-coverage.test.ts
+
+### Diff stat
+ packages/twenty-mcp/src/__tests__/views-coverage.test.ts | 41 +++++++++++++++++++++---------
+ 1 file changed, 30 insertions(+), 11 deletions(-)
+
+### Test results
+
+**Test 1: Full views-coverage test suite**
+```
+PASS src/__tests__/views-coverage.test.ts
+  FIELD_TYPE_OPERAND_MAP matches twenty-front FILTER_OPERANDS_MAP
+    ✓ balanced-bracket scanner correctly slices nested-array spread declarations (item 6 regression guard) (3 ms)
+    ✓ FIELD_TYPE_OPERAND_MAP has the same field types as FILTER_OPERANDS_MAP (1 ms)
+    ✓ FIELD_TYPE_OPERAND_MAP has the same operand lists as FILTER_OPERANDS_MAP for every type
+
+Test Suites: 1 passed, 1 total
+Tests:       3 passed, 3 total
+```
+PASS
+
+**Test 2: grep -c 'bDepth\|depth++\|depth--'**
+```
+4
+```
+PASS — 4 occurrences, all from the single helper definition (depth++ at line 32, depth-- at line 34) and the brace-scanner in parseTwentyFrontMap (lines 98, 100). No bDepth remaining. ≤ 6.
+
+**Test 3: Adversarial regression check (deliberate bug depth === 0 → depth <= 1)**
+```
+FAIL src/__tests__/views-coverage.test.ts
+  ✕ balanced-bracket scanner correctly slices nested-array spread declarations (item 6 regression guard)
+    Expected: ['FIRST', 'NESTED_INNER', 'THIRD']
+    Received: ['FIRST', 'NESTED_INNER']
+```
+PASS — deliberate bug is caught. Bug was reverted before proceeding.
+
+**Test 4: Full unit suite**
+```
+Test Suites: 16 passed, 16 total
+Tests:       218 passed, 218 total
+```
+PASS
+
+### Surprises
+The grep count of 4 (not 0) was expected — the helper's `depth++`/`depth--` appear once each in `sliceBalancedBracket`, and `depth++`/`depth--` appear once each in `parseTwentyFrontMap`'s brace-level scanner (which uses `{`/`}` not `[`/`]` and was not part of the extracted helper). The plan says "≤ 6 occurrences total — 1 definition" which is satisfied. `bDepth` is completely absent.
+
+> Audit round 1: clean — see [issue-16-17-18-clubbed-audit-round-1.md](issue-16-17-18-clubbed-audit-round-1.md) (combined clubbed audit covering #16/#17/#18)

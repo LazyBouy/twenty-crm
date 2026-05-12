@@ -40,77 +40,89 @@ const baseUrl = process.env.TWENTY_BASE_URL ?? '';
 // token as the bearer. The TWENTY_API_KEY is forwarded by the proxy itself.
 const inboundToken = process.env.MCP_INBOUND_TOKEN ?? '';
 
-describeIfSmoke('vps-smoke: deployed proxy is reachable + read-only paths return success', () => {
-  if (enabled && smokeMode) {
-    if (!baseUrl) throw new Error('MCP_VPS_SMOKE=1 but TWENTY_BASE_URL not set');
-    if (!inboundToken)
-      throw new Error('MCP_VPS_SMOKE=1 but MCP_INBOUND_TOKEN not set (Caddy gate requires it)');
-  }
-
-  // The deployed proxy authenticates inbound requests via the Caddy token.
-  // We pass it as the bearer; the proxy uses its own TWENTY_API_KEY env to
-  // talk to Twenty internally.
-  const client = new TwentyMcpClient({ baseUrl, apiKey: inboundToken });
-
-  const unwrap = (r: { content: Array<{ type: string; text?: string }> }) => {
-    const block = r.content[0];
-    if (!block || block.type !== 'text' || typeof block.text !== 'string') {
-      throw new Error('expected text block in tool result');
+describeIfSmoke(
+  'vps-smoke: deployed proxy is reachable + read-only paths return success',
+  () => {
+    if (enabled && smokeMode) {
+      if (!baseUrl)
+        throw new Error('MCP_VPS_SMOKE=1 but TWENTY_BASE_URL not set');
+      if (!inboundToken)
+        throw new Error(
+          'MCP_VPS_SMOKE=1 but MCP_INBOUND_TOKEN not set (Caddy gate requires it)',
+        );
     }
 
-    return block.text;
-  };
+    // The deployed proxy authenticates inbound requests via the Caddy token.
+    // We pass it as the bearer; the proxy uses its own TWENTY_API_KEY env to
+    // talk to Twenty internally.
+    const client = new TwentyMcpClient({ baseUrl, apiKey: inboundToken });
 
-  it('discovery({}) returns a tool catalog', async () => {
-    const r = await client.toolsCall('discovery', {});
-    const text = unwrap(r);
-    expect(text).toMatch(/Found \d+ tool/);
-    expect(text).toContain('## ');
-  });
+    const unwrap = (r: { content: Array<{ type: string; text?: string }> }) => {
+      const block = r.content[0];
+      if (!block || block.type !== 'text' || typeof block.text !== 'string') {
+        throw new Error('expected text block in tool result');
+      }
 
-  it('search_records({object: "person"}) returns success: true', async () => {
-    const r = await client.toolsCall('search_records', { object: 'person', limit: 1 });
-    const text = unwrap(r);
-    const parsed = JSON.parse(text);
-    expect(parsed.success).toBe(true);
-  });
+      return block.text;
+    };
 
-  it('discovery({focus: "find_people"}) returns the inner schema', async () => {
-    const r = await client.toolsCall('discovery', { focus: 'find_people' });
-    const text = unwrap(r);
-    // Either the inner JSON schema or a learn_tools envelope; both should not be errors.
-    expect(text.toLowerCase()).not.toContain('failed');
-  });
+    it('discovery({}) returns a tool catalog', async () => {
+      const r = await client.toolsCall('discovery', {});
+      const text = unwrap(r);
+      expect(text).toMatch(/Found \d+ tool/);
+      expect(text).toContain('## ');
+    });
 
-  it('discovery({focus: "create_company"}) returns the inner schema', async () => {
-    const r = await client.toolsCall('discovery', { focus: 'create_company' });
-    const text = unwrap(r);
-    expect(text.toLowerCase()).not.toContain('failed');
-  });
+    it('search_records({object: "person"}) returns success: true', async () => {
+      const r = await client.toolsCall('search_records', {
+        object: 'person',
+        limit: 1,
+      });
+      const text = unwrap(r);
+      const parsed = JSON.parse(text);
+      expect(parsed.success).toBe(true);
+    });
 
-  // NOTE: link_note_to_record has no read-only mode and would write a noteTarget.
-  // For post-deploy verification of the bug #4 fix, we exercise that path
-  // SEPARATELY against pre-seeded test note + company records, using the
-  // tag prefix `mcp-vps-link-` so they're identifiable. That test is opt-in
-  // beyond MCP_VPS_SMOKE — it requires MCP_VPS_SMOKE_LINK_NOTE_ID + ..._COMPANY_ID
-  // env vars pointing at workspace records you've decided are safe to link.
-  describe('link_note_to_record (post-deploy, opt-in)', () => {
-    const noteId = process.env.MCP_VPS_SMOKE_LINK_NOTE_ID;
-    const companyId = process.env.MCP_VPS_SMOKE_LINK_COMPANY_ID;
-    const linkEnabled = enabled && smokeMode && Boolean(noteId) && Boolean(companyId);
-    const desc = linkEnabled ? describe : describe.skip;
+    it('discovery({focus: "find_people"}) returns the inner schema', async () => {
+      const r = await client.toolsCall('discovery', { focus: 'find_people' });
+      const text = unwrap(r);
+      // Either the inner JSON schema or a learn_tools envelope; both should not be errors.
+      expect(text.toLowerCase()).not.toContain('failed');
+    });
 
-    desc('with pre-seeded test records', () => {
-      it('successfully creates the noteTarget link via /graphql (bug #4 verification)', async () => {
-        const r = await client.toolsCall('link_note_to_record', {
-          noteId,
-          targetCompanyId: companyId,
+    it('discovery({focus: "create_company"}) returns the inner schema', async () => {
+      const r = await client.toolsCall('discovery', {
+        focus: 'create_company',
+      });
+      const text = unwrap(r);
+      expect(text.toLowerCase()).not.toContain('failed');
+    });
+
+    // NOTE: link_note_to_record has no read-only mode and would write a noteTarget.
+    // For post-deploy verification of the bug #4 fix, we exercise that path
+    // SEPARATELY against pre-seeded test note + company records, using the
+    // tag prefix `mcp-vps-link-` so they're identifiable. That test is opt-in
+    // beyond MCP_VPS_SMOKE — it requires MCP_VPS_SMOKE_LINK_NOTE_ID + ..._COMPANY_ID
+    // env vars pointing at workspace records you've decided are safe to link.
+    describe('link_note_to_record (post-deploy, opt-in)', () => {
+      const noteId = process.env.MCP_VPS_SMOKE_LINK_NOTE_ID;
+      const companyId = process.env.MCP_VPS_SMOKE_LINK_COMPANY_ID;
+      const linkEnabled =
+        enabled && smokeMode && Boolean(noteId) && Boolean(companyId);
+      const desc = linkEnabled ? describe : describe.skip;
+
+      desc('with pre-seeded test records', () => {
+        it('successfully creates the noteTarget link via /graphql (bug #4 verification)', async () => {
+          const r = await client.toolsCall('link_note_to_record', {
+            noteId,
+            targetCompanyId: companyId,
+          });
+          const text = unwrap(r);
+          const parsed = JSON.parse(text);
+          expect(parsed.success).toBe(true);
+          expect(parsed.result?.createNoteTarget?.noteId).toBe(noteId);
         });
-        const text = unwrap(r);
-        const parsed = JSON.parse(text);
-        expect(parsed.success).toBe(true);
-        expect(parsed.result?.createNoteTarget?.noteId).toBe(noteId);
       });
     });
-  });
-});
+  },
+);

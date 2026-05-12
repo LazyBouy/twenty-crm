@@ -2,7 +2,9 @@ import { buildWorkflowHandlers } from '../tools/workflows';
 import { TwentyMcpClient } from '../twenty-mcp-client';
 
 const makeClient = () => {
-  const toolsCall = jest.fn().mockResolvedValue({ content: [{ type: 'text', text: 'ok' }] });
+  const toolsCall = jest
+    .fn()
+    .mockResolvedValue({ content: [{ type: 'text', text: 'ok' }] });
 
   return { toolsCall, client: { toolsCall } as unknown as TwentyMcpClient };
 };

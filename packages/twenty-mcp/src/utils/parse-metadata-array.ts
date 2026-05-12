@@ -27,7 +27,8 @@ export const parseInnerOrGraphqlArray = <T>(text: string): T[] => {
   const describe = (v: unknown): string => {
     if (v === null) return 'null';
     if (Array.isArray(v)) return 'array';
-    if (typeof v === 'object') return `object with keys [${Object.keys(v as object).join(', ')}]`;
+    if (typeof v === 'object')
+      return `object with keys [${Object.keys(v as object).join(', ')}]`;
     return typeof v;
   };
   throw new Error(

@@ -29,7 +29,9 @@ describe('linkNoteToRecordInputSchema', () => {
   });
 
   it('refuses zero target ids', () => {
-    const result = linkNoteToRecordInputSchema.safeParse({ noteId: VALID_NOTE });
+    const result = linkNoteToRecordInputSchema.safeParse({
+      noteId: VALID_NOTE,
+    });
     expect(result.success).toBe(false);
     expect(JSON.stringify(result)).toContain('Exactly one of');
   });
@@ -84,9 +86,13 @@ describe('buildCreateNoteTargetMutation', () => {
 describe('linkNoteToRecord handler', () => {
   it('routes through graphqlMutation, NOT toolsCall — bypassing the workflow gate', async () => {
     const toolsCall = jest.fn();
-    const graphqlMutation = jest
-      .fn()
-      .mockResolvedValue({ createNoteTarget: { id: 'nt-1', noteId: VALID_NOTE, targetCompanyId: VALID_COMPANY } });
+    const graphqlMutation = jest.fn().mockResolvedValue({
+      createNoteTarget: {
+        id: 'nt-1',
+        noteId: VALID_NOTE,
+        targetCompanyId: VALID_COMPANY,
+      },
+    });
     const client = { toolsCall, graphqlMutation } as unknown as TwentyMcpClient;
     const handlers = buildNoteTargetHandlers(client);
 
@@ -101,7 +107,9 @@ describe('linkNoteToRecord handler', () => {
     expect(graphqlMutation).toHaveBeenCalledTimes(1);
     const [query, variables, endpoint] = graphqlMutation.mock.calls[0];
     expect(query).toContain('createNoteTarget');
-    expect((variables as { data: { noteId: string } }).data.noteId).toBe(VALID_NOTE);
+    expect((variables as { data: { noteId: string } }).data.noteId).toBe(
+      VALID_NOTE,
+    );
     // Bug #4 regression guard: createNoteTarget lives on /graphql, not /metadata.
     // The handler must explicitly target the data endpoint.
     expect(endpoint).toBe('graphql');

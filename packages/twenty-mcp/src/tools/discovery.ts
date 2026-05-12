@@ -6,14 +6,19 @@ export const discoveryInputSchema = z.object({
   query: z
     .string()
     .optional()
-    .describe('Free-text filter on tool name or description. Empty = top-level catalog.'),
+    .describe(
+      'Free-text filter on tool name or description. Empty = top-level catalog.',
+    ),
   focus: z
     .string()
     .optional()
     .describe(
       'Specific tool name. When set, returns the full input JSON Schema for that tool only. Use this before calling a tool you have not seen before.',
     ),
-  category: z.string().optional().describe('Filter the catalog to a single category.'),
+  category: z
+    .string()
+    .optional()
+    .describe('Filter the catalog to a single category.'),
 });
 
 export type DiscoveryInput = z.infer<typeof discoveryInputSchema>;
@@ -27,7 +32,7 @@ export const discoveryToolDefinition = {
     'Pass {query: "..."} or {category: "..."} to narrow the catalog. ' +
     'This tool is read-only — it never invokes tools. ' +
     'AUTHORITATIVE SCHEMA: when invoking the convenience CRUD tools (search_records / create_record / update_record / etc.), ' +
-    'their forwarded payload must satisfy Twenty\'s INNER schema (the convenience wrapper just spreads `data` / `filter` for you). ' +
+    "their forwarded payload must satisfy Twenty's INNER schema (the convenience wrapper just spreads `data` / `filter` for you). " +
     'If your input doesn\'t fit the wrapper\'s documented shape, call discovery({focus: "<inner_tool>"}) — e.g. {focus: "create_company"} — to read the exact field list before invoking.',
   inputSchema: discoveryInputSchema.shape,
   annotations: { readOnlyHint: true, idempotentHint: true },
@@ -62,23 +67,35 @@ const collectCatalog = (raw: unknown): CatalogEntry[] => {
   if (!raw) return [];
 
   // Twenty wraps the response as { catalog: { CATEGORY: [...] } }. Unwrap if so.
-  if (typeof raw === 'object' && !Array.isArray(raw) && 'catalog' in (raw as object)) {
+  if (
+    typeof raw === 'object' &&
+    !Array.isArray(raw) &&
+    'catalog' in (raw as object)
+  ) {
     return collectCatalog((raw as { catalog: unknown }).catalog);
   }
 
   // Flat array of entries.
   if (Array.isArray(raw)) {
-    return raw.filter((e): e is CatalogEntry => typeof e === 'object' && e !== null && 'name' in e);
+    return raw.filter(
+      (e): e is CatalogEntry =>
+        typeof e === 'object' && e !== null && 'name' in e,
+    );
   }
 
   // Object grouped by category.
   if (typeof raw === 'object') {
     const out: CatalogEntry[] = [];
-    for (const [category, value] of Object.entries(raw as Record<string, unknown>)) {
+    for (const [category, value] of Object.entries(
+      raw as Record<string, unknown>,
+    )) {
       if (Array.isArray(value)) {
         for (const entry of value) {
           if (entry && typeof entry === 'object' && 'name' in entry) {
-            out.push({ category, ...(entry as Record<string, unknown>) } as CatalogEntry);
+            out.push({
+              category,
+              ...(entry as Record<string, unknown>),
+            } as CatalogEntry);
           }
         }
       }
@@ -106,7 +123,9 @@ const summarizeCatalog = (entries: CatalogEntry[]): string => {
   for (const [cat, list] of byCategory) {
     lines.push(`## ${cat} (${list.length})`);
     for (const entry of list.slice(0, 8)) {
-      const desc = entry.description ? ` — ${entry.description.split('\n')[0].slice(0, 120)}` : '';
+      const desc = entry.description
+        ? ` — ${entry.description.split('\n')[0].slice(0, 120)}`
+        : '';
       lines.push(`- \`${entry.name}\`${desc}`);
     }
     if (list.length > 8) lines.push(`  …and ${list.length - 8} more`);
@@ -127,12 +146,17 @@ export const handleDiscovery = async (
   // focus mode: return the schema for a specific tool via Twenty's learn_tools.
   if (input.focus) {
     try {
-      const result = await client.toolsCall('learn_tools', { toolNames: [input.focus] });
+      const result = await client.toolsCall('learn_tools', {
+        toolNames: [input.focus],
+      });
       return result;
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
 
-      return textResult(`learn_tools failed for "${input.focus}": ${message}`, true);
+      return textResult(
+        `learn_tools failed for "${input.focus}": ${message}`,
+        true,
+      );
     }
   }
 

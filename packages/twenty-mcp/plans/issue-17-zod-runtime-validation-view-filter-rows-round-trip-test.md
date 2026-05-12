@@ -119,3 +119,63 @@ Reproduction: not fully derivable without a running stack (the integration test 
 - packages/twenty-mcp/plans/issue-14-low-sweep.md (§Out-of-scope clause that deferred this item)
 - packages/twenty-mcp/plans/issue-7-views-test-infrastructure-brittleness.md (original HIGH-2 that established the parseInnerOrGraphqlArray pattern)
 - packages/twenty-mcp/plans/issue-14-low-sweep-audit-round-1.md (audit that filed this as a follow-up issue)
+
+## Implementation notes
+> Implemented: 2026-05-12T00:00:00Z
+
+### Files changed
+packages/twenty-mcp/src/utils/view-filter-row.schema.ts (NEW)
+packages/twenty-mcp/src/__tests__/view-filter-row.schema.test.ts (NEW)
+packages/twenty-mcp/src/__tests__/integration/round-trip.test.ts (MODIFIED: import + parse call)
+
+### Diff stat
+ packages/twenty-mcp/src/__tests__/integration/round-trip.test.ts  |  5 ++---
+ packages/twenty-mcp/src/__tests__/view-filter-row.schema.test.ts  | 27 +++++++++++++++++++++++++++
+ packages/twenty-mcp/src/utils/view-filter-row.schema.ts           | 19 +++++++++++++++++++
+ 3 files changed, 48 insertions(+), 3 deletions(-)
+
+### Test results
+
+**Test 1: Full unit suite**
+```
+Test Suites: 17 passed, 17 total
+Tests:       221 passed, 221 total
+```
+PASS — 3 new schema tests + 218 existing = 221.
+
+**Test 2: npx tsc --noEmit**
+```
+(no output)
+exit: 0
+```
+PASS — zero TypeScript errors.
+
+**Test 3: view-filter-row.schema.test.ts (3 tests)**
+```
+PASS src/__tests__/view-filter-row.schema.test.ts
+  viewFilterRowSchema
+    ✓ rejects row with missing fieldMetadataId (8 ms)
+    ✓ rejects row with non-UUID fieldMetadataId (1 ms)
+    ✓ accepts valid row (1 ms)
+Tests: 3 passed, 3 total
+```
+PASS
+
+**Test 4: Integration test (GREATER_THAN_OR_EQUAL on DATE_TIME) against local stack**
+```
+PASS src/__tests__/integration/round-trip.test.ts
+  ✓ apply_plan CREATE_VIEW_FILTER with GREATER_THAN_OR_EQUAL on DATE_TIME is rejected by the proxy (never reaches Twenty) (207 ms)
+Tests: 26 skipped, 1 passed, 27 total
+```
+PASS — Zod schema validation ran against live Twenty data; rows passed schema; leakedRows is empty.
+
+**Verification grep for viewFilterRowSchema.array().parse**
+```
+362:      const viewFilterRows = viewFilterRowSchema.array().parse(rawRows);
+```
+PASS — schema is called in round-trip.test.ts (not just defined and ignored).
+
+### Surprises
+The schema was placed in a new `src/utils/view-filter-row.schema.ts` file per the plan's Failure mode #3 mitigation. No circular import issue arose. The integration test ran against the live local stack and passed; Twenty's view_filters response rows have `fieldMetadataId` as a valid UUID, confirming there is no current shape drift.
+
+> Audit round 1: LOW backlogged (foot-gun): viewFilterRowSchema.array().parse([]) vacuous on zero-rows — see [issue-16-17-18-clubbed-audit-round-1.md](issue-16-17-18-clubbed-audit-round-1.md)

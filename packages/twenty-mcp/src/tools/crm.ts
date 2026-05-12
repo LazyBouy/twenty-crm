@@ -109,11 +109,16 @@ export const resolveObjectNames = async (
   }
 
   if (candidates.length === 1) {
-    return { nameSingular: candidates[0].nameSingular, namePlural: candidates[0].namePlural };
+    return {
+      nameSingular: candidates[0].nameSingular,
+      namePlural: candidates[0].namePlural,
+    };
   }
 
   if (candidates.length > 1) {
-    const names = candidates.map((c) => `'${c.nameSingular}' / '${c.namePlural}'`).join(', ');
+    const names = candidates
+      .map((c) => `'${c.nameSingular}' / '${c.namePlural}'`)
+      .join(', ');
     throw new Error(
       `Object '${input}' is ambiguous — matches multiple objects: ${names}. ` +
         `Pass the exact nameSingular or namePlural to disambiguate.`,
@@ -193,7 +198,12 @@ export const searchInputSchema = z.object({
     .max(100)
     .optional()
     .describe('Max records to return (Twenty default 10, max 100).'),
-  offset: z.number().int().nonnegative().optional().describe('Records to skip.'),
+  offset: z
+    .number()
+    .int()
+    .nonnegative()
+    .optional()
+    .describe('Records to skip.'),
 });
 
 export const getInputSchema = z.object({
@@ -235,45 +245,80 @@ const wrapInExecute = async (
 export const buildCrmHandlers = (client: TwentyMcpClient) => ({
   searchRecords: async (args: z.infer<typeof searchInputSchema>) => {
     const { object, filter, ...rest } = args;
-    const { nameSingular, namePlural } = await resolveObjectNames(client, object);
+    const { nameSingular, namePlural } = await resolveObjectNames(
+      client,
+      object,
+    );
     const snakeSingular = camelToSnakeCase(nameSingular);
     const snakePlural = camelToSnakeCase(namePlural);
 
-    return wrapInExecute(client, buildToolName('search', snakeSingular, snakePlural), {
-      ...rest,
-      ...(filter ?? {}),
-    });
+    return wrapInExecute(
+      client,
+      buildToolName('search', snakeSingular, snakePlural),
+      {
+        ...rest,
+        ...(filter ?? {}),
+      },
+    );
   },
   getRecord: async (args: z.infer<typeof getInputSchema>) => {
-    const { nameSingular, namePlural } = await resolveObjectNames(client, args.object);
+    const { nameSingular, namePlural } = await resolveObjectNames(
+      client,
+      args.object,
+    );
     const snakeSingular = camelToSnakeCase(nameSingular);
     const snakePlural = camelToSnakeCase(namePlural);
-    return wrapInExecute(client, buildToolName('get', snakeSingular, snakePlural), {
-      id: args.id,
-    });
+    return wrapInExecute(
+      client,
+      buildToolName('get', snakeSingular, snakePlural),
+      {
+        id: args.id,
+      },
+    );
   },
   createRecord: async (args: z.infer<typeof createInputSchema>) => {
-    const { nameSingular, namePlural } = await resolveObjectNames(client, args.object);
+    const { nameSingular, namePlural } = await resolveObjectNames(
+      client,
+      args.object,
+    );
     const snakeSingular = camelToSnakeCase(nameSingular);
     const snakePlural = camelToSnakeCase(namePlural);
-    return wrapInExecute(client, buildToolName('create', snakeSingular, snakePlural), args.data);
+    return wrapInExecute(
+      client,
+      buildToolName('create', snakeSingular, snakePlural),
+      args.data,
+    );
   },
   updateRecord: async (args: z.infer<typeof updateInputSchema>) => {
-    const { nameSingular, namePlural } = await resolveObjectNames(client, args.object);
+    const { nameSingular, namePlural } = await resolveObjectNames(
+      client,
+      args.object,
+    );
     const snakeSingular = camelToSnakeCase(nameSingular);
     const snakePlural = camelToSnakeCase(namePlural);
-    return wrapInExecute(client, buildToolName('update', snakeSingular, snakePlural), {
-      id: args.id,
-      ...args.data,
-    });
+    return wrapInExecute(
+      client,
+      buildToolName('update', snakeSingular, snakePlural),
+      {
+        id: args.id,
+        ...args.data,
+      },
+    );
   },
   deleteRecord: async (args: z.infer<typeof deleteInputSchema>) => {
-    const { nameSingular, namePlural } = await resolveObjectNames(client, args.object);
+    const { nameSingular, namePlural } = await resolveObjectNames(
+      client,
+      args.object,
+    );
     const snakeSingular = camelToSnakeCase(nameSingular);
     const snakePlural = camelToSnakeCase(namePlural);
-    return wrapInExecute(client, buildToolName('delete', snakeSingular, snakePlural), {
-      id: args.id,
-    });
+    return wrapInExecute(
+      client,
+      buildToolName('delete', snakeSingular, snakePlural),
+      {
+        id: args.id,
+      },
+    );
   },
 });
 
@@ -287,7 +332,8 @@ export const crmToolDefinitions = {
   },
   get_record: {
     title: 'Get a CRM record by id',
-    description: 'Fetch a single record by its uuid. Routes to Twenty\'s `find_one_<singular>` tool.',
+    description:
+      "Fetch a single record by its uuid. Routes to Twenty's `find_one_<singular>` tool.",
     inputSchema: getInputSchema.shape,
     annotations: { readOnlyHint: true, idempotentHint: true },
   },
@@ -308,9 +354,8 @@ export const crmToolDefinitions = {
   delete_record: {
     title: 'Delete a CRM record',
     description:
-      'Soft-delete a record by id (Twenty uses soft delete by default). Routes to Twenty\'s `delete_<singular>` tool.',
+      "Soft-delete a record by id (Twenty uses soft delete by default). Routes to Twenty's `delete_<singular>` tool.",
     inputSchema: deleteInputSchema.shape,
     annotations: { destructiveHint: true, idempotentHint: true },
   },
 } as const;
-

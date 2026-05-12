@@ -20,7 +20,11 @@ export const linkNoteToRecordInputSchema = z
       .uuid()
       .optional()
       .describe('Company id to attach the note to.'),
-    targetPersonId: z.string().uuid().optional().describe('Person id to attach the note to.'),
+    targetPersonId: z
+      .string()
+      .uuid()
+      .optional()
+      .describe('Person id to attach the note to.'),
     targetOpportunityId: z
       .string()
       .uuid()
@@ -29,7 +33,9 @@ export const linkNoteToRecordInputSchema = z
   })
   .refine(
     (v) =>
-      [v.targetCompanyId, v.targetPersonId, v.targetOpportunityId].filter(Boolean).length === 1,
+      [v.targetCompanyId, v.targetPersonId, v.targetOpportunityId].filter(
+        Boolean,
+      ).length === 1,
     {
       message:
         'Exactly one of targetCompanyId / targetPersonId / targetOpportunityId is required. To link to multiple records, call this tool once per record.',
@@ -65,12 +71,16 @@ export const buildCreateNoteTargetMutation = (
 });
 
 const wrapGraphqlResult = (data: unknown): ToolsCallResult => ({
-  content: [{ type: 'text', text: JSON.stringify({ success: true, result: data }) }],
+  content: [
+    { type: 'text', text: JSON.stringify({ success: true, result: data }) },
+  ],
   isError: false,
 });
 
 export const buildNoteTargetHandlers = (client: TwentyMcpClient) => ({
-  linkNoteToRecord: async (args: LinkNoteToRecordInput): Promise<ToolsCallResult> => {
+  linkNoteToRecord: async (
+    args: LinkNoteToRecordInput,
+  ): Promise<ToolsCallResult> => {
     const { query, variables } = buildCreateNoteTargetMutation(args);
     // Route to /graphql, NOT /metadata. createNoteTarget is a workspace-data
     // mutation (per-object CRUD); /metadata only exposes admin mutations.

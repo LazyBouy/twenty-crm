@@ -30,7 +30,11 @@ import pluralize from 'pluralize';
 const TOOLS_DIR = join(__dirname, '..', 'tools');
 const FIXTURES_DIR = join(__dirname, 'fixtures');
 
-type GraphqlTypeRef = { name: string | null; kind: string; ofType?: GraphqlTypeRef | null };
+type GraphqlTypeRef = {
+  name: string | null;
+  kind: string;
+  ofType?: GraphqlTypeRef | null;
+};
 type GraphqlField = { name: string; type?: GraphqlTypeRef };
 type GraphqlType = {
   name: string;
@@ -44,7 +48,9 @@ type GraphqlSchema = {
 };
 
 /** Unwrap NON_NULL / LIST type wrappers to get the named type. */
-const unwrapTypeName = (t: GraphqlTypeRef | null | undefined): string | null => {
+const unwrapTypeName = (
+  t: GraphqlTypeRef | null | undefined,
+): string | null => {
   let cur: GraphqlTypeRef | null | undefined = t;
   while (cur && !cur.name) {
     cur = cur.ofType;
@@ -57,7 +63,8 @@ type InnerToolFixture = {
   tools: Record<string, unknown>;
 };
 
-const loadJson = <T>(path: string): T => JSON.parse(readFileSync(path, 'utf8')) as T;
+const loadJson = <T>(path: string): T =>
+  JSON.parse(readFileSync(path, 'utf8')) as T;
 
 /** Extract every inner tool name passed as `toolName: '<X>'` in a source file. */
 const extractInnerToolNames = (source: string): string[] => {
@@ -115,7 +122,8 @@ const extractSelectionFields = (source: string, openIdx: number): string[] => {
       if (/[a-zA-Z0-9_]/.test(ch)) {
         buf += ch;
       } else {
-        if (buf.trim() && /^[a-zA-Z_]\w*$/.test(buf.trim())) fields.add(buf.trim());
+        if (buf.trim() && /^[a-zA-Z_]\w*$/.test(buf.trim()))
+          fields.add(buf.trim());
         buf = '';
       }
     }
@@ -158,7 +166,10 @@ const extractGraphqlOperations = (source: string): ParsedOperation[] => {
     let t: RegExpExecArray | null;
     while ((t = typeRe.exec(args)) !== null) {
       const name = t[1]!.replace(/[!\[\]]/g, '');
-      if (name && !['String', 'Int', 'Float', 'Boolean', 'ID', 'UUID'].includes(name)) {
+      if (
+        name &&
+        !['String', 'Int', 'Float', 'Boolean', 'ID', 'UUID'].includes(name)
+      ) {
         inputTypes.push(name);
       }
     }
@@ -234,7 +245,10 @@ describe('coverage: every wrapper-authored downstream reference exists on the de
   const graphqlPath = join(FIXTURES_DIR, 'data-graphql.json');
 
   // Lazy-load with skip if fixtures are absent (e.g., fresh clone before captures run).
-  const hasFixtures = existsSync(fixturePath) && existsSync(metadataPath) && existsSync(graphqlPath);
+  const hasFixtures =
+    existsSync(fixturePath) &&
+    existsSync(metadataPath) &&
+    existsSync(graphqlPath);
 
   if (!hasFixtures) {
     it.skip('fixtures missing — run `npx tsx scripts/capture-graphql-schema.ts` and `capture-inner-schemas.ts` to populate', () => {});
@@ -284,7 +298,11 @@ describe('coverage: every wrapper-authored downstream reference exists on the de
 
   const wrapperFiles = readdirSync(TOOLS_DIR)
     .filter((f) => f.endsWith('.ts') && !f.endsWith('.test.ts'))
-    .map((f) => ({ name: f, path: join(TOOLS_DIR, f), source: readFileSync(join(TOOLS_DIR, f), 'utf8') }));
+    .map((f) => ({
+      name: f,
+      path: join(TOOLS_DIR, f),
+      source: readFileSync(join(TOOLS_DIR, f), 'utf8'),
+    }));
 
   describe('inner tool names exist in inner-tool-schemas fixture', () => {
     for (const file of wrapperFiles) {
@@ -293,7 +311,8 @@ describe('coverage: every wrapper-authored downstream reference exists on the de
         const missing: string[] = [];
         for (const name of names) {
           const key = fixtureKeyForInnerName(name);
-          if (!innerToolKeys.has(key)) missing.push(`'${name}' (fixture key: '${key}')`);
+          if (!innerToolKeys.has(key))
+            missing.push(`'${name}' (fixture key: '${key}')`);
         }
         if (missing.length > 0) {
           throw new Error(
@@ -367,11 +386,15 @@ describe('coverage: every wrapper-authored downstream reference exists on the de
           endpoint === 'metadata'
             ? { mutation: metadataMutationFields, query: metadataQueryFields }
             : { mutation: dataMutationFields, query: dataQueryFields };
-        const typeFieldIndex = endpoint === 'metadata' ? metadataTypeFields : dataTypeFields;
+        const typeFieldIndex =
+          endpoint === 'metadata' ? metadataTypeFields : dataTypeFields;
 
         for (const op of ops) {
           if (op.selectedFields.length === 0) continue;
-          const returnType = returnTypeNameFor(opFields[op.kind], op.operationName);
+          const returnType = returnTypeNameFor(
+            opFields[op.kind],
+            op.operationName,
+          );
           if (!returnType) continue; // operation not in fixture — already flagged above
           const known = typeFieldIndex.get(returnType);
           if (!known) continue; // type not in fixture (rare — scalar/union); skip

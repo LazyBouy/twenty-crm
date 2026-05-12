@@ -137,3 +137,65 @@ print('lint:diff-with-main target:', json.dumps(d['targets'].get('lint:diff-with
 - packages/twenty-server/project.json (reference implementation for lint:diff-with-main, simpler than front — no twenty-shared dependency)
 - packages/twenty-mcp/plans/issue-14-low-sweep-audit-round-1.md (audit that flagged the INCONCLUSIVE lint gate as a cross-cutting LOW → follow-up issue #18)
 - packages/twenty-mcp/CLAUDE.md (before-shipping checklist — audit lint gate is a required step)
+
+## Implementation notes
+> Implemented: 2026-05-12T00:00:00Z
+
+### Files changed
+packages/twenty-mcp/project.json
+
+### Diff stat
+ packages/twenty-mcp/project.json | 26 +++++++++++++++++++++++++-
+ 1 file changed, 25 insertions(+), 1 deletion(-)
+
+### Test results
+
+**Test 1: python3 JSON assertion for lint:diff-with-main target**
+```
+OK
+```
+PASS
+
+**Test 2: npx nx lint:diff-with-main twenty-mcp**
+Initial run showed the target executing (no more "Cannot find configuration") but exited 1 due to pre-existing prettier drift in files changed vs main on the dev branch (not introduced by this plan). The target worked correctly — it identified 15 files with formatting issues. After running the fix configuration (test 3), the target exits 0.
+```
+Checking formatting...
+All matched files use Prettier code style!
+
+ NX   Successfully ran target lint:diff-with-main for project twenty-mcp
+
+exit: 0
+```
+PASS (target executes correctly; pre-existing prettier issues in dev branch were fixed by test 3 fix mode)
+
+**Test 3: npx nx lint:diff-with-main twenty-mcp --configuration=fix**
+```
+ NX   Successfully ran target lint:diff-with-main for project twenty-mcp
+exit: 0
+```
+PASS — fix mode ran and formatted pre-existing prettier drift in 15 files that were changed vs main but had not been formatted.
+
+**Test 4: touch src/index.ts, git add, run lint:diff-with-main, restore**
+```
+prettier --check $FILES ran; src/index.ts was among the checked files
+```
+PASS — command ran prettier --check on index.ts (and other branch-changed files); target functioned correctly. (At that point index.ts still had pre-existing formatting issues, so exit was 1; after fix mode in test 3, exit is 0.)
+
+**Test 5: npx nx lint twenty-mcp (full directory)**
+```
+Checking formatting...
+[warn] src/__tests__/discovery-catalog-shape.test.ts
+[warn] src/__tests__/discovery.test.ts
+[warn] src/__tests__/fixtures/inner-tool-schemas.json
+[warn] src/__tests__/twenty-mcp-client.test.ts
+[warn] Code style issues found in 4 files.
+exit: 1
+```
+PARTIAL — The target executes (no longer an empty stub). But 4 files fail prettier: `discovery-catalog-shape.test.ts`, `discovery.test.ts`, `inner-tool-schemas.json`, `twenty-mcp-client.test.ts`. Of these, the 3 `.ts` files are NOT in `git diff main...HEAD` (unchanged vs main; pre-existing prettier drift that also exists in main). `inner-tool-schemas.json` IS in `git diff main...HEAD` (re-captured on dev), but the new `lint:diff-with-main` target's `grep -E '\.(ts|tsx)$'` filter deliberately excludes JSON, so the gate correctly ignores it. This is pre-existing tech debt outside the scope of this plan; the `lint:diff-with-main` target (this plan's deliverable) passes cleanly. Footnote corrected pre-commit per audit-round-1 LOW-1.
+
+### Surprises
+1. The dev branch has extensive pre-existing prettier drift in files changed vs main (15 files flagged in `lint:diff-with-main` initially). Running `--configuration=fix` as part of test plan item 3 fixed all of them; these are legitimate formatter fixes collateral to testing the target.
+2. The full `lint` target (test 5) reveals 4 more files with prettier issues that are NOT in the git diff from main (they're unchanged files in main that already had issues). This is pre-existing tech debt outside this plan's scope. The `lint:diff-with-main` target — the actual deliverable — passes cleanly.
+3. `prettier` is not on PATH bare; the target uses `prettier` (not `npx prettier`). It resolves via Yarn's bin resolution from the workspace `node_modules/.bin`. This worked correctly during the nx:run-commands execution (cwd is projectRoot, which puts workspace node_modules/.bin in PATH via nx). Failure mode #2 from the plan did NOT occur.
+
+> Audit round 1: LOW absorbed pre-commit (trivial-in-place): footnote correction for inner-tool-schemas.json. LOW backlogged (cosmetic): note-targets.test.ts mockResolvedValue hand-edit. See [issue-16-17-18-clubbed-audit-round-1.md](issue-16-17-18-clubbed-audit-round-1.md)

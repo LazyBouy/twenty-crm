@@ -74,7 +74,9 @@ describe('access — GraphQL passthrough wire-level', () => {
     });
 
     const [query, variables] = graphqlMutation.mock.calls[0]!;
-    expect(query).toContain('upsertObjectPermissions(upsertObjectPermissionsInput: $input)');
+    expect(query).toContain(
+      'upsertObjectPermissions(upsertObjectPermissionsInput: $input)',
+    );
     expect((variables as { input: { roleId: string } }).input.roleId).toBe(
       '00000000-0000-0000-0000-000000000001',
     );
@@ -90,7 +92,9 @@ describe('access — GraphQL passthrough wire-level', () => {
     });
 
     const [query, variables] = graphqlMutation.mock.calls[0]!;
-    expect(query).toContain('sendInvitations(emails: $emails, roleId: $roleId)');
+    expect(query).toContain(
+      'sendInvitations(emails: $emails, roleId: $roleId)',
+    );
     expect(variables).toEqual({
       emails: ['a@x.com', 'b@x.com'],
       roleId: '00000000-0000-0000-0000-000000000001',
@@ -125,11 +129,15 @@ describe('access — GraphQL passthrough wire-level', () => {
     const { graphqlMutation, client } = makeClient();
     const handlers = buildAccessHandlers(client);
 
-    await handlers.accessRevokeApiKey({ id: '00000000-0000-0000-0000-000000000001' });
+    await handlers.accessRevokeApiKey({
+      id: '00000000-0000-0000-0000-000000000001',
+    });
 
     const [query, variables] = graphqlMutation.mock.calls[0]!;
     expect(query).toContain('revokeApiKey(input: $input)');
-    expect(variables).toEqual({ input: { id: '00000000-0000-0000-0000-000000000001' } });
+    expect(variables).toEqual({
+      input: { id: '00000000-0000-0000-0000-000000000001' },
+    });
   });
 });
 

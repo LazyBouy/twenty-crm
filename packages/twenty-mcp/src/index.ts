@@ -1,5 +1,9 @@
 #!/usr/bin/env node
-import { createServer as createHttpServer, IncomingMessage, ServerResponse } from 'node:http';
+import {
+  createServer as createHttpServer,
+  IncomingMessage,
+  ServerResponse,
+} from 'node:http';
 
 import 'dotenv/config';
 
@@ -30,42 +34,44 @@ const main = async (): Promise<void> => {
 
   // Stateless transport: one Transport per request, per the MCP SDK pattern.
   // Avoids needing session bookkeeping in v1.
-  const httpServer = createHttpServer(async (req: IncomingMessage, res: ServerResponse) => {
-    if (!req.url?.startsWith('/mcp')) {
-      res.statusCode = 404;
-      res.setHeader('Content-Type', 'application/json');
-      res.end(JSON.stringify({ error: 'not_found', hint: 'POST /mcp' }));
-
-      return;
-    }
-
-    if (req.method !== 'POST') {
-      res.statusCode = 405;
-      res.setHeader('Allow', 'POST');
-      res.end();
-
-      return;
-    }
-
-    try {
-      const body = await readJsonBody(req);
-      const transport = createTransport();
-      res.on('close', () => {
-        void transport.close();
-      });
-      await mcpServer.connect(transport);
-      await transport.handleRequest(req, res, body);
-    } catch (err) {
-      const message = err instanceof Error ? err.message : String(err);
-      if (!res.headersSent) {
-        res.statusCode = 500;
+  const httpServer = createHttpServer(
+    async (req: IncomingMessage, res: ServerResponse) => {
+      if (!req.url?.startsWith('/mcp')) {
+        res.statusCode = 404;
         res.setHeader('Content-Type', 'application/json');
-        res.end(JSON.stringify({ error: 'internal', message }));
-      } else {
-        res.end();
+        res.end(JSON.stringify({ error: 'not_found', hint: 'POST /mcp' }));
+
+        return;
       }
-    }
-  });
+
+      if (req.method !== 'POST') {
+        res.statusCode = 405;
+        res.setHeader('Allow', 'POST');
+        res.end();
+
+        return;
+      }
+
+      try {
+        const body = await readJsonBody(req);
+        const transport = createTransport();
+        res.on('close', () => {
+          void transport.close();
+        });
+        await mcpServer.connect(transport);
+        await transport.handleRequest(req, res, body);
+      } catch (err) {
+        const message = err instanceof Error ? err.message : String(err);
+        if (!res.headersSent) {
+          res.statusCode = 500;
+          res.setHeader('Content-Type', 'application/json');
+          res.end(JSON.stringify({ error: 'internal', message }));
+        } else {
+          res.end();
+        }
+      }
+    },
+  );
 
   httpServer.listen(config.mcpPort, config.mcpBind, () => {
     const url = `http://${config.mcpBind}:${config.mcpPort}/mcp`;
@@ -76,6 +82,8 @@ const main = async (): Promise<void> => {
 };
 
 main().catch((err) => {
-  process.stderr.write(`[twenty-mcp] fatal: ${err instanceof Error ? err.stack ?? err.message : String(err)}\n`);
+  process.stderr.write(
+    `[twenty-mcp] fatal: ${err instanceof Error ? (err.stack ?? err.message) : String(err)}\n`,
+  );
   process.exit(1);
 });

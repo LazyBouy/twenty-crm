@@ -17,7 +17,10 @@ import {
   noteTargetToolDefinitions,
 } from './tools/note-targets';
 import { buildViewHandlers, viewToolDefinitions } from './tools/views';
-import { buildWorkflowHandlers, workflowToolDefinitions } from './tools/workflows';
+import {
+  buildWorkflowHandlers,
+  workflowToolDefinitions,
+} from './tools/workflows';
 import { TwentyMcpClient } from './twenty-mcp-client';
 
 const SERVER_INFO = {
@@ -53,28 +56,40 @@ export const createServer = ({
       'update_record / delete_record) work for any CRM object including custom objects.',
   });
 
-  server.registerTool(
-    'discovery',
-    discoveryToolDefinition,
-    async (args) => handleDiscovery(discoveryInputSchema.parse(args), client),
+  server.registerTool('discovery', discoveryToolDefinition, async (args) =>
+    handleDiscovery(discoveryInputSchema.parse(args), client),
   );
 
   const crm = buildCrmHandlers(client);
 
-  server.registerTool('search_records', crmToolDefinitions.search_records, async (args) =>
-    crm.searchRecords(args as Parameters<typeof crm.searchRecords>[0]),
+  server.registerTool(
+    'search_records',
+    crmToolDefinitions.search_records,
+    async (args) =>
+      crm.searchRecords(args as Parameters<typeof crm.searchRecords>[0]),
   );
-  server.registerTool('get_record', crmToolDefinitions.get_record, async (args) =>
-    crm.getRecord(args as Parameters<typeof crm.getRecord>[0]),
+  server.registerTool(
+    'get_record',
+    crmToolDefinitions.get_record,
+    async (args) => crm.getRecord(args as Parameters<typeof crm.getRecord>[0]),
   );
-  server.registerTool('create_record', crmToolDefinitions.create_record, async (args) =>
-    crm.createRecord(args as Parameters<typeof crm.createRecord>[0]),
+  server.registerTool(
+    'create_record',
+    crmToolDefinitions.create_record,
+    async (args) =>
+      crm.createRecord(args as Parameters<typeof crm.createRecord>[0]),
   );
-  server.registerTool('update_record', crmToolDefinitions.update_record, async (args) =>
-    crm.updateRecord(args as Parameters<typeof crm.updateRecord>[0]),
+  server.registerTool(
+    'update_record',
+    crmToolDefinitions.update_record,
+    async (args) =>
+      crm.updateRecord(args as Parameters<typeof crm.updateRecord>[0]),
   );
-  server.registerTool('delete_record', crmToolDefinitions.delete_record, async (args) =>
-    crm.deleteRecord(args as Parameters<typeof crm.deleteRecord>[0]),
+  server.registerTool(
+    'delete_record',
+    crmToolDefinitions.delete_record,
+    async (args) =>
+      crm.deleteRecord(args as Parameters<typeof crm.deleteRecord>[0]),
   );
 
   // Note-target linking — bypasses Twenty's record-crud workflow gate via
@@ -86,7 +101,9 @@ export const createServer = ({
     'link_note_to_record',
     noteTargetToolDefinitions.link_note_to_record,
     async (args) =>
-      noteTargets.linkNoteToRecord(args as Parameters<typeof noteTargets.linkNoteToRecord>[0]),
+      noteTargets.linkNoteToRecord(
+        args as Parameters<typeof noteTargets.linkNoteToRecord>[0],
+      ),
   );
 
   // Metadata + views + access + workflow tools are opt-in via
@@ -99,8 +116,13 @@ export const createServer = ({
     const workflows = buildWorkflowHandlers(client);
 
     // --- metadata family (data-model + dispatcher + v1.1 extras) ----------
-    server.registerTool('metadata_query', metadataToolDefinitions.metadata_query, async (args) =>
-      metadata.metadataQuery(args as Parameters<typeof metadata.metadataQuery>[0]),
+    server.registerTool(
+      'metadata_query',
+      metadataToolDefinitions.metadata_query,
+      async (args) =>
+        metadata.metadataQuery(
+          args as Parameters<typeof metadata.metadataQuery>[0],
+        ),
     );
     server.registerTool(
       'metadata_create_object',
@@ -122,13 +144,17 @@ export const createServer = ({
       'metadata_create_field',
       metadataToolDefinitions.metadata_create_field,
       async (args) =>
-        metadata.metadataCreateField(args as Parameters<typeof metadata.metadataCreateField>[0]),
+        metadata.metadataCreateField(
+          args as Parameters<typeof metadata.metadataCreateField>[0],
+        ),
     );
     server.registerTool(
       'metadata_update_field',
       metadataToolDefinitions.metadata_update_field,
       async (args) =>
-        metadata.metadataUpdateField(args as Parameters<typeof metadata.metadataUpdateField>[0]),
+        metadata.metadataUpdateField(
+          args as Parameters<typeof metadata.metadataUpdateField>[0],
+        ),
     );
     server.registerTool(
       'metadata_create_many_fields',
@@ -166,7 +192,9 @@ export const createServer = ({
       'metadata_apply_plan',
       metadataToolDefinitions.metadata_apply_plan,
       async (args) =>
-        metadata.metadataApplyPlan(args as Parameters<typeof metadata.metadataApplyPlan>[0]),
+        metadata.metadataApplyPlan(
+          args as Parameters<typeof metadata.metadataApplyPlan>[0],
+        ),
     );
 
     // --- views family ------------------------------------------------------
@@ -174,13 +202,17 @@ export const createServer = ({
       'metadata_create_view',
       viewToolDefinitions.metadata_create_view,
       async (args) =>
-        views.metadataCreateView(args as Parameters<typeof views.metadataCreateView>[0]),
+        views.metadataCreateView(
+          args as Parameters<typeof views.metadataCreateView>[0],
+        ),
     );
     server.registerTool(
       'metadata_update_view',
       viewToolDefinitions.metadata_update_view,
       async (args) =>
-        views.metadataUpdateView(args as Parameters<typeof views.metadataUpdateView>[0]),
+        views.metadataUpdateView(
+          args as Parameters<typeof views.metadataUpdateView>[0],
+        ),
     );
     server.registerTool(
       'metadata_create_view_field',
@@ -236,13 +268,17 @@ export const createServer = ({
       'access_create_role',
       accessToolDefinitions.access_create_role,
       async (args) =>
-        access.accessCreateRole(args as Parameters<typeof access.accessCreateRole>[0]),
+        access.accessCreateRole(
+          args as Parameters<typeof access.accessCreateRole>[0],
+        ),
     );
     server.registerTool(
       'access_update_role',
       accessToolDefinitions.access_update_role,
       async (args) =>
-        access.accessUpdateRole(args as Parameters<typeof access.accessUpdateRole>[0]),
+        access.accessUpdateRole(
+          args as Parameters<typeof access.accessUpdateRole>[0],
+        ),
     );
     server.registerTool(
       'access_upsert_object_permissions',
@@ -272,13 +308,17 @@ export const createServer = ({
       'access_create_api_key',
       accessToolDefinitions.access_create_api_key,
       async (args) =>
-        access.accessCreateApiKey(args as Parameters<typeof access.accessCreateApiKey>[0]),
+        access.accessCreateApiKey(
+          args as Parameters<typeof access.accessCreateApiKey>[0],
+        ),
     );
     server.registerTool(
       'access_revoke_api_key',
       accessToolDefinitions.access_revoke_api_key,
       async (args) =>
-        access.accessRevokeApiKey(args as Parameters<typeof access.accessRevokeApiKey>[0]),
+        access.accessRevokeApiKey(
+          args as Parameters<typeof access.accessRevokeApiKey>[0],
+        ),
     );
 
     // --- workflow family (specialised inner tools, NOT in apply_plan) -----
@@ -335,7 +375,9 @@ export const createServer = ({
       workflowToolDefinitions.workflow_create_draft_from_version,
       async (args) =>
         workflows.workflowCreateDraftFromVersion(
-          args as Parameters<typeof workflows.workflowCreateDraftFromVersion>[0],
+          args as Parameters<
+            typeof workflows.workflowCreateDraftFromVersion
+          >[0],
         ),
     );
   }

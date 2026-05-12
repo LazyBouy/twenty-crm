@@ -54,13 +54,18 @@ describe('loadConfig', () => {
 
   it('throws a helpful error when TWENTY_API_KEY is missing', () => {
     expect(() =>
-      loadConfig({ TWENTY_BASE_URL: 'http://localhost:4440' } as NodeJS.ProcessEnv),
+      loadConfig({
+        TWENTY_BASE_URL: 'http://localhost:4440',
+      } as NodeJS.ProcessEnv),
     ).toThrow(/TWENTY_API_KEY/);
   });
 
   it('throws when TWENTY_BASE_URL is not a URL', () => {
     expect(() =>
-      loadConfig({ TWENTY_BASE_URL: 'not-a-url', TWENTY_API_KEY: 'k' } as NodeJS.ProcessEnv),
+      loadConfig({
+        TWENTY_BASE_URL: 'not-a-url',
+        TWENTY_API_KEY: 'k',
+      } as NodeJS.ProcessEnv),
     ).toThrow(/twentyBaseUrl/);
   });
 });

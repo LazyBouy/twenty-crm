@@ -22,6 +22,7 @@ import { buildMetadataHandlers } from '../../tools/metadata';
 import { buildNoteTargetHandlers } from '../../tools/note-targets';
 import { TwentyMcpClient, type ToolsCallResult } from '../../twenty-mcp-client';
 import { parseInnerOrGraphqlArray } from '../../utils/parse-metadata-array';
+import { viewFilterRowSchema } from '../../utils/view-filter-row.schema';
 
 const enabled = process.env.TWENTY_MCP_INTEGRATION === '1';
 const destructiveOk = process.env.MCP_INTEGRATION_DESTRUCTIVE_OK === '1';
@@ -357,10 +358,8 @@ describeIfDestructive(
       const viewFiltersText = (
         viewFiltersResult.content[0] as { type: 'text'; text: string }
       ).text;
-      const viewFilterRows = parseInnerOrGraphqlArray<{
-        fieldMetadataId?: string;
-        operand?: string;
-      }>(viewFiltersText);
+      const rawRows = parseInnerOrGraphqlArray<unknown>(viewFiltersText);
+      const viewFilterRows = viewFilterRowSchema.array().parse(rawRows);
       const leakedRows = viewFilterRows.filter(
         (row) =>
           row.fieldMetadataId === DATE_TIME_FIELD_ID &&

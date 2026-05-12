@@ -45,7 +45,7 @@ import type { ToolsCallResult, TwentyMcpClient } from '../twenty-mcp-client';
 const looseObject = z
   .object({})
   .passthrough()
-  .describe('Free-form object — full shape validated by Twenty\'s inner tool.');
+  .describe("Free-form object — full shape validated by Twenty's inner tool.");
 
 export const workflowCreateCompleteInputSchema = z.object({
   name: z.string().min(1).describe('Workflow name (display).'),
@@ -70,7 +70,9 @@ export const workflowCreateCompleteInputSchema = z.object({
   edges: z
     .array(
       z.object({
-        source: z.string().describe('Source step id (use "trigger" for the trigger step).'),
+        source: z
+          .string()
+          .describe('Source step id (use "trigger" for the trigger step).'),
         target: z.string().describe('Target step id.'),
         sourceConnectionOptions: looseObject.optional(),
       }),
@@ -106,12 +108,16 @@ export const workflowCreateVersionStepInputSchema = z.object({
 export const workflowUpdateVersionStepInputSchema = z.object({
   workflowVersionId: z.string().uuid(),
   stepId: z.string(),
-  step: looseObject.describe('Updated WorkflowAction object — full step replaces the previous one.'),
+  step: looseObject.describe(
+    'Updated WorkflowAction object — full step replaces the previous one.',
+  ),
 });
 
 export const workflowCreateVersionEdgeInputSchema = z.object({
   workflowVersionId: z.string().uuid(),
-  source: z.string().describe('Source step id (use "trigger" for the trigger step).'),
+  source: z
+    .string()
+    .describe('Source step id (use "trigger" for the trigger step).'),
   target: z.string().describe('Target step id.'),
   sourceConnectionOptions: looseObject
     .optional()
@@ -137,23 +143,29 @@ const wrapInExecute = (
   client.toolsCall('execute_tool', { toolName: innerName, arguments: args });
 
 export const buildWorkflowHandlers = (client: TwentyMcpClient) => ({
-  workflowCreateComplete: (args: z.infer<typeof workflowCreateCompleteInputSchema>) =>
-    wrapInExecute(client, 'create_complete_workflow', args),
+  workflowCreateComplete: (
+    args: z.infer<typeof workflowCreateCompleteInputSchema>,
+  ) => wrapInExecute(client, 'create_complete_workflow', args),
 
-  workflowActivateVersion: (args: z.infer<typeof workflowActivateVersionInputSchema>) =>
-    wrapInExecute(client, 'activate_workflow_version', args),
+  workflowActivateVersion: (
+    args: z.infer<typeof workflowActivateVersionInputSchema>,
+  ) => wrapInExecute(client, 'activate_workflow_version', args),
 
-  workflowDeactivateVersion: (args: z.infer<typeof workflowDeactivateVersionInputSchema>) =>
-    wrapInExecute(client, 'deactivate_workflow_version', args),
+  workflowDeactivateVersion: (
+    args: z.infer<typeof workflowDeactivateVersionInputSchema>,
+  ) => wrapInExecute(client, 'deactivate_workflow_version', args),
 
-  workflowCreateVersionStep: (args: z.infer<typeof workflowCreateVersionStepInputSchema>) =>
-    wrapInExecute(client, 'create_workflow_version_step', args),
+  workflowCreateVersionStep: (
+    args: z.infer<typeof workflowCreateVersionStepInputSchema>,
+  ) => wrapInExecute(client, 'create_workflow_version_step', args),
 
-  workflowUpdateVersionStep: (args: z.infer<typeof workflowUpdateVersionStepInputSchema>) =>
-    wrapInExecute(client, 'update_workflow_version_step', args),
+  workflowUpdateVersionStep: (
+    args: z.infer<typeof workflowUpdateVersionStepInputSchema>,
+  ) => wrapInExecute(client, 'update_workflow_version_step', args),
 
-  workflowCreateVersionEdge: (args: z.infer<typeof workflowCreateVersionEdgeInputSchema>) =>
-    wrapInExecute(client, 'create_workflow_version_edge', args),
+  workflowCreateVersionEdge: (
+    args: z.infer<typeof workflowCreateVersionEdgeInputSchema>,
+  ) => wrapInExecute(client, 'create_workflow_version_edge', args),
 
   workflowCreateDraftFromVersion: (
     args: z.infer<typeof workflowCreateDraftFromVersionInputSchema>,
@@ -164,7 +176,8 @@ export const buildWorkflowHandlers = (client: TwentyMcpClient) => ({
 
 export const workflowToolDefinitions = {
   workflow_create_complete: {
-    title: 'Create a complete workflow (Workflow + DRAFT version + steps + edges)',
+    title:
+      'Create a complete workflow (Workflow + DRAFT version + steps + edges)',
     description:
       'One-shot create: Workflow record + WorkflowVersion DRAFT + steps + edges. Optionally activate immediately, but the workflow agent should pass `activate: false`, present the DRAFT to the user, and call workflow_activate_version separately on user `activate <id>` confirmation.',
     inputSchema: workflowCreateCompleteInputSchema.shape,
@@ -173,26 +186,28 @@ export const workflowToolDefinitions = {
   workflow_activate_version: {
     title: 'Activate a workflow version',
     description:
-      'Activates a DRAFT (or last-published DEACTIVATED) version. Twenty validates trigger settings, step settings, and code-step compilation; throws on invalid. Creates a WorkflowAutomatedTrigger record for DATABASE_EVENT and CRON triggers. Updates the parent Workflow\'s lastPublishedVersionId.',
+      "Activates a DRAFT (or last-published DEACTIVATED) version. Twenty validates trigger settings, step settings, and code-step compilation; throws on invalid. Creates a WorkflowAutomatedTrigger record for DATABASE_EVENT and CRON triggers. Updates the parent Workflow's lastPublishedVersionId.",
     inputSchema: workflowActivateVersionInputSchema.shape,
     annotations: { destructiveHint: true, idempotentHint: true },
   },
   workflow_deactivate_version: {
     title: 'Deactivate a workflow version',
-    description: 'Sets the version to DEACTIVATED and updates the parent Workflow accordingly.',
+    description:
+      'Sets the version to DEACTIVATED and updates the parent Workflow accordingly.',
     inputSchema: workflowDeactivateVersionInputSchema.shape,
     annotations: { destructiveHint: true, idempotentHint: true },
   },
   workflow_create_version_step: {
     title: 'Add a step to a DRAFT workflow version',
     description:
-      'Append (or insert after parentStepId) a step. The agent sets `valid: true` only when confident the step\'s settings are complete — Twenty validates only at activation.',
+      "Append (or insert after parentStepId) a step. The agent sets `valid: true` only when confident the step's settings are complete — Twenty validates only at activation.",
     inputSchema: workflowCreateVersionStepInputSchema.shape,
     annotations: { destructiveHint: true, idempotentHint: false },
   },
   workflow_update_version_step: {
     title: 'Update a step in a DRAFT workflow version',
-    description: 'Replace a step\'s configuration. Only DRAFT versions are mutable.',
+    description:
+      "Replace a step's configuration. Only DRAFT versions are mutable.",
     inputSchema: workflowUpdateVersionStepInputSchema.shape,
     annotations: { destructiveHint: true, idempotentHint: true },
   },

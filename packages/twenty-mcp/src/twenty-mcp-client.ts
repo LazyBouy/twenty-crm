@@ -49,7 +49,11 @@ export type TwentyMcpClientOptions = {
 
 export type GraphqlError = {
   message: string;
-  extensions?: { code?: string; subCode?: string; userFriendlyMessage?: string };
+  extensions?: {
+    code?: string;
+    subCode?: string;
+    userFriendlyMessage?: string;
+  };
   path?: ReadonlyArray<string | number>;
 };
 
@@ -82,7 +86,9 @@ export class TwentyMcpClient {
    * The deployed Caddy-fronted proxy returns SSE; the local docker-compose
    * proxy can return either depending on Accept negotiation. We accept both.
    */
-  private async parseJsonRpcResponse(response: Response): Promise<JsonRpcResponse<ToolsCallResult>> {
+  private async parseJsonRpcResponse(
+    response: Response,
+  ): Promise<JsonRpcResponse<ToolsCallResult>> {
     const ct = response.headers.get('content-type') ?? '';
     if (ct.includes('text/event-stream')) {
       const raw = await response.text();
@@ -94,7 +100,10 @@ export class TwentyMcpClient {
         if (!body) continue;
         try {
           const parsed = JSON.parse(body) as JsonRpcResponse<ToolsCallResult>;
-          if (parsed && (parsed.result !== undefined || parsed.error !== undefined)) {
+          if (
+            parsed &&
+            (parsed.result !== undefined || parsed.error !== undefined)
+          ) {
             return parsed;
           }
         } catch {
@@ -109,7 +118,10 @@ export class TwentyMcpClient {
     return (await response.json()) as JsonRpcResponse<ToolsCallResult>;
   }
 
-  async toolsCall(name: string, args: Record<string, unknown>): Promise<ToolsCallResult> {
+  async toolsCall(
+    name: string,
+    args: Record<string, unknown>,
+  ): Promise<ToolsCallResult> {
     const body = {
       jsonrpc: '2.0' as const,
       id: randomUUID(),
@@ -139,11 +151,17 @@ export class TwentyMcpClient {
     const json = await this.parseJsonRpcResponse(response);
 
     if (json.error) {
-      throw new TwentyMcpClientError(json.error.message, json.error.code, json.error.data);
+      throw new TwentyMcpClientError(
+        json.error.message,
+        json.error.code,
+        json.error.data,
+      );
     }
 
     if (!json.result) {
-      throw new TwentyMcpClientError('Twenty /mcp returned no result and no error');
+      throw new TwentyMcpClientError(
+        'Twenty /mcp returned no result and no error',
+      );
     }
 
     return json.result;
@@ -186,17 +204,25 @@ export class TwentyMcpClient {
       );
     }
 
-    const json = (await response.json()) as { data?: T; errors?: GraphqlError[] };
+    const json = (await response.json()) as {
+      data?: T;
+      errors?: GraphqlError[];
+    };
 
     if (json.errors && json.errors.length > 0) {
       const first = json.errors[0]!;
       const code = first.extensions?.code ?? first.extensions?.subCode;
       const message = first.extensions?.userFriendlyMessage ?? first.message;
-      throw new TwentyMcpClientError(message, undefined, { code, errors: json.errors });
+      throw new TwentyMcpClientError(message, undefined, {
+        code,
+        errors: json.errors,
+      });
     }
 
     if (json.data === undefined) {
-      throw new TwentyMcpClientError(`Twenty /${endpoint} returned no data and no errors`);
+      throw new TwentyMcpClientError(
+        `Twenty /${endpoint} returned no data and no errors`,
+      );
     }
 
     return json.data;
