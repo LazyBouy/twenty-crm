@@ -3,12 +3,15 @@
 !**/**/.env.example
 .DS_Store
 /.idea
-# Ignore .claude/ contents by default (settings.local.json, state/, etc.)
-# but track agents/ and skills/ so they apply to every session in this repo.
+# Ignore .claude/ contents by default (settings.local.json, state/, tool-use.log, etc.)
+# but track agents/, skills/, settings.json, and hooks/ so the permission policy
+# applies to every session in this repo. See plans/2026-05-13-claude-permissions-system.md.
 # Use .claude/* (not .claude/) so git still descends and the negations apply.
 .claude/*
 !.claude/agents/
 !.claude/skills/
+!.claude/settings.json
+!.claude/hooks/
 .cursor/debug-*.log
 **/**/node_modules/
 .cache
