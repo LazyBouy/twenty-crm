@@ -3,6 +3,7 @@ import { type FieldDefinition } from '@/object-record/record-field/ui/types/Fiel
 import { type FieldMetadata } from '@/object-record/record-field/ui/types/FieldMetadata';
 
 import { getFieldButtonIcon } from '@/object-record/record-field/ui/utils/getFieldButtonIcon';
+import { getDefaultIconForFieldType } from '@/object-metadata/utils/getDefaultIconForFieldType';
 import { FieldMetadataType } from 'twenty-shared/types';
 import { type FieldMetadataItem } from '@/object-metadata/types/FieldMetadataItem';
 
@@ -59,7 +60,7 @@ export const formatFieldMetadataItemAsFieldDefinition = ({
     labelWidth,
     type: field.type,
     metadata: fieldDefintionMetadata,
-    iconName: field.icon ?? 'Icon123',
+    iconName: field.icon ?? getDefaultIconForFieldType(field.type),
     defaultValue: field.defaultValue,
     editButtonIcon: getFieldButtonIcon({
       metadata: fieldDefintionMetadata,
