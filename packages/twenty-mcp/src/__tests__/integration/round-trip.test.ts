@@ -926,3 +926,406 @@ describeIfDestructive(
     });
   },
 );
+
+/**
+ * metadata_update_field SELECT options — issue #22.
+ * Reproduces the "options.map is not a function" failure by calling
+ * metadata_update_field with a real options array on a custom SELECT field.
+ * Also verifies the defensive string-coercion path (passing options as a
+ * JSON string) normalises correctly to an array before forwarding.
+ *
+ * Strategy: create a temporary custom object with a SELECT field, then:
+ *   1. Call metadata_update_field with a real JS array (real-array path).
+ *   2. Call metadata_update_field with a JSON-stringified array (double-encoding path).
+ * Both must NOT produce "options.map is not a function". Clean up the object in afterAll.
+ */
+describeIfDestructive(
+  'integration: metadata_update_field SELECT options (issue #22)',
+  () => {
+    if (enabled && destructiveOk && !apiKey) {
+      throw new Error('TWENTY_MCP_INTEGRATION=1 but TWENTY_API_KEY is not set');
+    }
+
+    const client = new TwentyMcpClient({ baseUrl, apiKey });
+    const metadata = buildMetadataHandlers(client, apiKey);
+
+    // Created in beforeAll — cleaned up in afterAll.
+    let fixtureObjectId: string | undefined;
+    let selectFieldId: string | undefined;
+
+    const fixtureObjName = 'mcpIssue22SelectFixture';
+    const fixtureObjPlural = 'mcpIssue22SelectFixtures';
+    const initialOptions = [
+      { value: 'OPT_A', label: 'Option A', color: 'green', position: 0 },
+      { value: 'OPT_B', label: 'Option B', color: 'blue', position: 1 },
+    ];
+
+    beforeAll(async () => {
+      if (!enabled || !destructiveOk) return;
+
+      // Defensive cleanup: remove any stale fixture from a prior crashed run.
+      const existing = await metadata.metadataQuery({
+        kind: 'objects',
+        args: { limit: 200 },
+      });
+      const existingText = (
+        existing.content[0] as { type: 'text'; text: string }
+      ).text;
+      const existingObjects = parseInnerOrGraphqlArray<{
+        id: string;
+        nameSingular: string;
+      }>(existingText);
+      const stale = existingObjects.find(
+        (o) => o.nameSingular === fixtureObjName,
+      );
+      if (stale) {
+        await client.graphqlMutation(
+          'mutation DeleteObject($input: DeleteOneObjectInput!) { deleteOneObject(input: $input) { id } }',
+          { input: { id: stale.id } },
+          'metadata',
+        );
+      }
+
+      // Create a custom object for the fixture.
+      const createObjResult = await metadata.metadataApplyPlan({
+        mutations: [
+          {
+            key: 'create_issue22_fixture_object',
+            op: 'CREATE_OBJECT',
+            args: {
+              nameSingular: fixtureObjName,
+              namePlural: fixtureObjPlural,
+              labelSingular: 'MCP Issue 22 Select Fixture',
+              labelPlural: 'MCP Issue 22 Select Fixtures',
+              icon: 'IconTestPipe',
+              description:
+                'Temporary fixture for issue #22 SELECT options integration test. Safe to delete.',
+            },
+          },
+        ],
+      });
+      const objParsed = JSON.parse(
+        (createObjResult.content[0] as { type: 'text'; text: string }).text,
+      );
+      if (objParsed.failed) {
+        throw new Error(
+          `round-trip.test (issue #22): failed to create fixture object: ${JSON.stringify(objParsed.failed)}`,
+        );
+      }
+      const appliedEntry = objParsed.applied?.[0]?.result as
+        | { content?: Array<{ type: string; text: string }> }
+        | undefined;
+      const innerText = appliedEntry?.content?.[0]?.text;
+      if (!innerText) {
+        throw new Error(
+          `round-trip.test (issue #22): CREATE_OBJECT applied entry has no inner text. Got: ${JSON.stringify(objParsed.applied?.[0])}`,
+        );
+      }
+      const innerObject = JSON.parse(innerText) as { id?: string };
+      fixtureObjectId = innerObject.id;
+      if (!fixtureObjectId) {
+        throw new Error(
+          `round-trip.test (issue #22): CREATE_OBJECT succeeded but no id returned. Inner payload: ${innerText}`,
+        );
+      }
+
+      // Create a SELECT field on the fixture object.
+      const createFieldResult = await metadata.metadataApplyPlan({
+        mutations: [
+          {
+            key: 'create_issue22_select_field',
+            op: 'CREATE_FIELD',
+            args: {
+              objectMetadataId: fixtureObjectId,
+              type: 'SELECT',
+              name: 'issue22Status',
+              label: 'Issue 22 Status',
+              options: initialOptions,
+            },
+          },
+        ],
+      });
+      const fieldParsed = JSON.parse(
+        (createFieldResult.content[0] as { type: 'text'; text: string }).text,
+      );
+      if (fieldParsed.failed) {
+        throw new Error(
+          `round-trip.test (issue #22): failed to create SELECT field: ${JSON.stringify(fieldParsed.failed)}`,
+        );
+      }
+      const fieldEntry = fieldParsed.applied?.[0]?.result as
+        | { content?: Array<{ type: string; text: string }> }
+        | undefined;
+      const fieldInnerText = fieldEntry?.content?.[0]?.text;
+      if (!fieldInnerText) {
+        throw new Error(
+          `round-trip.test (issue #22): CREATE_FIELD applied entry has no inner text. Got: ${JSON.stringify(fieldParsed.applied?.[0])}`,
+        );
+      }
+      const fieldObject = JSON.parse(fieldInnerText) as { id?: string };
+      selectFieldId = fieldObject.id;
+      if (!selectFieldId) {
+        throw new Error(
+          `round-trip.test (issue #22): CREATE_FIELD succeeded but no field id returned. Inner payload: ${fieldInnerText}`,
+        );
+      }
+    });
+
+    afterAll(async () => {
+      // Delete the fixture object — deletes the SELECT field along with it.
+      if (fixtureObjectId) {
+        await client.graphqlMutation(
+          'mutation DeleteObject($input: DeleteOneObjectInput!) { deleteOneObject(input: $input) { id } }',
+          { input: { id: fixtureObjectId } },
+          'metadata',
+        );
+      }
+    });
+
+    it('metadata_update_field SELECT options — real array forwarded without "options.map is not a function"', async () => {
+      if (!selectFieldId)
+        throw new Error('selectFieldId not set — beforeAll must succeed first');
+
+      // Add a third option to the existing two.
+      const updatedOptions = [
+        ...initialOptions,
+        { value: 'OPT_C', label: 'Option C', color: 'pink', position: 2 },
+      ];
+
+      const result = await metadata.metadataUpdateField({
+        id: selectFieldId,
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        options: updatedOptions as any,
+      });
+
+      // Must not be an error; the pre-fix failure is "options.map is not a function".
+      expect(result.isError).not.toBe(true);
+      const rawText = (result.content[0] as { type: 'text'; text: string })
+        .text;
+
+      // The response text must not contain the "map is not a function" error.
+      expect(rawText).not.toMatch(/map is not a function/);
+
+      // Twenty's update_field_metadata returns the updated field object directly
+      // (no {success: true} envelope). Assert the field id is in the response,
+      // confirming it's a real update response (not an error payload).
+      const parsed = JSON.parse(rawText) as Record<string, unknown>;
+      expect(parsed['id']).toBe(selectFieldId);
+      // The updated options array should have 3 items.
+      const returnedOptions = parsed['options'] as unknown[];
+      expect(Array.isArray(returnedOptions)).toBe(true);
+      expect(returnedOptions.length).toBe(3);
+    });
+
+    it('metadata_update_field SELECT options — stringified array coerced (double-encoding path)', async () => {
+      if (!selectFieldId)
+        throw new Error('selectFieldId not set — beforeAll must succeed first');
+
+      // Simulate transport double-encoding: pass options as a JSON string.
+      // The handler's defensive coercion must parse this back to an array before forwarding.
+      const optionsAsString = JSON.stringify(initialOptions);
+
+      const result = await metadata.metadataUpdateField({
+        id: selectFieldId,
+        options: optionsAsString,
+      });
+
+      // The handler must coerce the string to an array and forward successfully.
+      expect(result.isError).not.toBe(true);
+      const rawText = (result.content[0] as { type: 'text'; text: string })
+        .text;
+
+      // The response text must not contain the "map is not a function" error.
+      expect(rawText).not.toMatch(/map is not a function/);
+
+      // The field id must be in the response, confirming a successful update.
+      const parsed = JSON.parse(rawText) as Record<string, unknown>;
+      expect(parsed['id']).toBe(selectFieldId);
+    });
+  },
+);
+
+/**
+ * metadata_update_field MULTI_SELECT options — issue #22, R3 failure-mode #3.
+ * Mirrors the SELECT fixture above for MULTI_SELECT to prove parity.
+ * The fix targets the `options` key regardless of field type; this test
+ * mechanically verifies MULTI_SELECT is not silently broken.
+ */
+describeIfDestructive(
+  'integration: metadata_update_field MULTI_SELECT options (issue #22 R3)',
+  () => {
+    if (enabled && destructiveOk && !apiKey) {
+      throw new Error('TWENTY_MCP_INTEGRATION=1 but TWENTY_API_KEY is not set');
+    }
+
+    const client = new TwentyMcpClient({ baseUrl, apiKey });
+    const metadata = buildMetadataHandlers(client, apiKey);
+
+    let fixtureObjectId: string | undefined;
+    let multiSelectFieldId: string | undefined;
+
+    const fixtureObjName = 'mcpIssue22MultiSelectFixture';
+    const fixtureObjPlural = 'mcpIssue22MultiSelectFixtures';
+    const initialOptions = [
+      { value: 'TAG_A', label: 'Tag A', color: 'green', position: 0 },
+      { value: 'TAG_B', label: 'Tag B', color: 'blue', position: 1 },
+    ];
+
+    beforeAll(async () => {
+      if (!enabled || !destructiveOk) return;
+
+      // Defensive cleanup: remove stale fixture from a prior crashed run.
+      const existing = await metadata.metadataQuery({
+        kind: 'objects',
+        args: { limit: 200 },
+      });
+      const existingText = (
+        existing.content[0] as { type: 'text'; text: string }
+      ).text;
+      const existingObjects = parseInnerOrGraphqlArray<{
+        id: string;
+        nameSingular: string;
+      }>(existingText);
+      const stale = existingObjects.find(
+        (o) => o.nameSingular === fixtureObjName,
+      );
+      if (stale) {
+        await client.graphqlMutation(
+          'mutation DeleteObject($input: DeleteOneObjectInput!) { deleteOneObject(input: $input) { id } }',
+          { input: { id: stale.id } },
+          'metadata',
+        );
+      }
+
+      // Create a custom object for the MULTI_SELECT fixture.
+      const createObjResult = await metadata.metadataApplyPlan({
+        mutations: [
+          {
+            key: 'create_issue22_multi_fixture_object',
+            op: 'CREATE_OBJECT',
+            args: {
+              nameSingular: fixtureObjName,
+              namePlural: fixtureObjPlural,
+              labelSingular: 'MCP Issue 22 MultiSelect Fixture',
+              labelPlural: 'MCP Issue 22 MultiSelect Fixtures',
+              icon: 'IconTestPipe',
+              description:
+                'Temporary fixture for issue #22 MULTI_SELECT options integration test. Safe to delete.',
+            },
+          },
+        ],
+      });
+      const objParsed = JSON.parse(
+        (createObjResult.content[0] as { type: 'text'; text: string }).text,
+      );
+      if (objParsed.failed) {
+        throw new Error(
+          `round-trip.test (issue #22 MULTI_SELECT): failed to create fixture object: ${JSON.stringify(objParsed.failed)}`,
+        );
+      }
+      const appliedEntry = objParsed.applied?.[0]?.result as
+        | { content?: Array<{ type: string; text: string }> }
+        | undefined;
+      const innerText = appliedEntry?.content?.[0]?.text;
+      if (!innerText) {
+        throw new Error(
+          `round-trip.test (issue #22 MULTI_SELECT): CREATE_OBJECT has no inner text. Got: ${JSON.stringify(objParsed.applied?.[0])}`,
+        );
+      }
+      const innerObject = JSON.parse(innerText) as { id?: string };
+      fixtureObjectId = innerObject.id;
+      if (!fixtureObjectId) {
+        throw new Error(
+          `round-trip.test (issue #22 MULTI_SELECT): CREATE_OBJECT succeeded but no id. Inner: ${innerText}`,
+        );
+      }
+
+      // Create a MULTI_SELECT field on the fixture object.
+      const createFieldResult = await metadata.metadataApplyPlan({
+        mutations: [
+          {
+            key: 'create_issue22_multi_select_field',
+            op: 'CREATE_FIELD',
+            args: {
+              objectMetadataId: fixtureObjectId,
+              type: 'MULTI_SELECT',
+              name: 'issue22Tags',
+              label: 'Issue 22 Tags',
+              options: initialOptions,
+            },
+          },
+        ],
+      });
+      const fieldParsed = JSON.parse(
+        (createFieldResult.content[0] as { type: 'text'; text: string }).text,
+      );
+      if (fieldParsed.failed) {
+        throw new Error(
+          `round-trip.test (issue #22 MULTI_SELECT): failed to create MULTI_SELECT field: ${JSON.stringify(fieldParsed.failed)}`,
+        );
+      }
+      const fieldEntry = fieldParsed.applied?.[0]?.result as
+        | { content?: Array<{ type: string; text: string }> }
+        | undefined;
+      const fieldInnerText = fieldEntry?.content?.[0]?.text;
+      if (!fieldInnerText) {
+        throw new Error(
+          `round-trip.test (issue #22 MULTI_SELECT): CREATE_FIELD has no inner text. Got: ${JSON.stringify(fieldParsed.applied?.[0])}`,
+        );
+      }
+      const fieldObject = JSON.parse(fieldInnerText) as { id?: string };
+      multiSelectFieldId = fieldObject.id;
+      if (!multiSelectFieldId) {
+        throw new Error(
+          `round-trip.test (issue #22 MULTI_SELECT): CREATE_FIELD succeeded but no field id. Inner: ${fieldInnerText}`,
+        );
+      }
+    });
+
+    afterAll(async () => {
+      // Delete the fixture object — cascades to the MULTI_SELECT field.
+      if (fixtureObjectId) {
+        await client.graphqlMutation(
+          'mutation DeleteObject($input: DeleteOneObjectInput!) { deleteOneObject(input: $input) { id } }',
+          { input: { id: fixtureObjectId } },
+          'metadata',
+        );
+      }
+    });
+
+    it('metadata_update_field MULTI_SELECT options — real array does not trigger "options.map is not a function"', async () => {
+      if (!multiSelectFieldId) {
+        throw new Error(
+          'multiSelectFieldId not set — beforeAll must succeed first',
+        );
+      }
+
+      // Add a third tag option to the existing two.
+      const updatedOptions = [
+        ...initialOptions,
+        { value: 'TAG_C', label: 'Tag C', color: 'pink', position: 2 },
+      ];
+
+      const result = await metadata.metadataUpdateField({
+        id: multiSelectFieldId,
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        options: updatedOptions as any,
+      });
+
+      expect(result.isError).not.toBe(true);
+      const rawText = (result.content[0] as { type: 'text'; text: string })
+        .text;
+
+      // The critical regression check: must NOT contain the bug-era error.
+      expect(rawText).not.toMatch(/map is not a function/);
+
+      // Twenty's update_field_metadata returns the updated field object directly.
+      const parsed = JSON.parse(rawText) as Record<string, unknown>;
+      expect(parsed['id']).toBe(multiSelectFieldId);
+      // The updated options array should have 3 items.
+      const returnedOptions = parsed['options'] as unknown[];
+      expect(Array.isArray(returnedOptions)).toBe(true);
+      expect(returnedOptions.length).toBe(3);
+    });
+  },
+);

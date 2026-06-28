@@ -349,6 +349,88 @@ describe('v1.1 typed tools', () => {
     });
   });
 
+  it('metadataUpdateField forwards real options array', async () => {
+    const { toolsCall, client, apiKey } = makeClient();
+    const handlers = buildMetadataHandlers(client, apiKey);
+
+    const realOptions = [
+      { value: 'TIER_A', label: 'Tier A', color: 'green', position: 0 },
+      { value: 'TIER_B', label: 'Tier B', color: 'blue', position: 1 },
+    ];
+
+    await handlers.metadataUpdateField({
+      id: '00000000-0000-0000-0000-000000000001',
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      options: realOptions as any,
+    });
+
+    expect(toolsCall).toHaveBeenCalledWith('execute_tool', {
+      toolName: 'update_field_metadata',
+      arguments: {
+        id: '00000000-0000-0000-0000-000000000001',
+        options: realOptions,
+      },
+    });
+    // options must arrive as a real array, not a string
+    const calledArgs = toolsCall.mock.calls[0]![1] as {
+      arguments: { options: unknown };
+    };
+    expect(Array.isArray(calledArgs.arguments.options)).toBe(true);
+  });
+
+  it('metadataUpdateField coerces stringified options', async () => {
+    const { toolsCall, client, apiKey } = makeClient();
+    const handlers = buildMetadataHandlers(client, apiKey);
+
+    const realOptions = [
+      { value: 'A', label: 'A', color: 'green', position: 0 },
+    ];
+    const stringifiedOptions = JSON.stringify(realOptions);
+
+    await handlers.metadataUpdateField({
+      id: '00000000-0000-0000-0000-000000000001',
+      options: stringifiedOptions,
+    });
+
+    expect(toolsCall).toHaveBeenCalledWith('execute_tool', {
+      toolName: 'update_field_metadata',
+      arguments: {
+        id: '00000000-0000-0000-0000-000000000001',
+        options: realOptions,
+      },
+    });
+    // The coerced options must be a real array, not a string
+    const calledArgs = toolsCall.mock.calls[0]![1] as {
+      arguments: { options: unknown };
+    };
+    expect(Array.isArray(calledArgs.arguments.options)).toBe(true);
+    expect(calledArgs.arguments.options).toEqual(realOptions);
+  });
+
+  it('metadataUpdateField rejects non-array options', async () => {
+    const { toolsCall, client, apiKey } = makeClient();
+    const handlers = buildMetadataHandlers(client, apiKey);
+
+    const result = await handlers.metadataUpdateField({
+      id: '00000000-0000-0000-0000-000000000001',
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      options: { map: 'not-a-function' } as any,
+    });
+
+    expect(result.isError).toBe(true);
+    const parsed = JSON.parse(
+      (result.content[0] as { type: 'text'; text: string }).text,
+    ) as { success: boolean; message: string };
+    expect(parsed.success).toBe(false);
+    expect(parsed.message).toMatch(/options must be an array/);
+    // toolsCall must NOT have been called with update_field_metadata
+    const updateCalls = toolsCall.mock.calls.filter(
+      (c) =>
+        (c[1] as { toolName?: string })?.toolName === 'update_field_metadata',
+    );
+    expect(updateCalls).toHaveLength(0);
+  });
+
   it('metadataCreateManyFields routes to create_many_field_metadata with {fields: [...]}', async () => {
     const { toolsCall, client, apiKey } = makeClient();
     const handlers = buildMetadataHandlers(client, apiKey);

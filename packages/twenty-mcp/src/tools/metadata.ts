@@ -146,7 +146,23 @@ export const metadataUpdateFieldInputSchema = z.object({
   isNullable: z.boolean().optional(),
   isUnique: z.boolean().optional(),
   defaultValue: z.unknown().optional(),
-  options: z.unknown().optional(),
+  options: z
+    .union([
+      z.array(
+        z.object({
+          id: z.string().optional(),
+          value: z.string(),
+          label: z.string(),
+          color: z.string(),
+          position: z.number().optional(),
+        }),
+      ),
+      z.string(),
+    ])
+    .optional()
+    .describe(
+      "For SELECT/MULTI_SELECT: full options array. Each entry: {value (UPPER_SNAKE_CASE), label, color, position?}. Include existing options' `id` to preserve them; omit `id` for new options; omitting an existing option deletes it. A JSON-stringified array is also accepted and parsed.",
+    ),
   settings: z.unknown().optional(),
   isLabelSyncedWithName: z.boolean().optional(),
 });
@@ -428,8 +444,54 @@ export const buildMetadataHandlers = (
   metadataCreateField: (args: z.infer<typeof metadataCreateFieldInputSchema>) =>
     wrapInExecute(client, 'create_field_metadata', args),
 
-  metadataUpdateField: (args: z.infer<typeof metadataUpdateFieldInputSchema>) =>
-    wrapInExecute(client, 'update_field_metadata', args),
+  metadataUpdateField: async (
+    args: z.infer<typeof metadataUpdateFieldInputSchema>,
+  ): Promise<ToolsCallResult> => {
+    let options = args.options as unknown;
+    if (options !== undefined) {
+      // Defensive coercion: if options arrived as a JSON string (transport double-encoding),
+      // parse it back to an array. If still not an array after parsing, reject clearly.
+      if (typeof options === 'string') {
+        try {
+          options = JSON.parse(options) as unknown;
+        } catch {
+          return {
+            content: [
+              {
+                type: 'text',
+                text: JSON.stringify({
+                  success: false,
+                  message:
+                    'metadata_update_field: options could not be parsed as JSON',
+                  error: `options arrived as a non-array string that is not valid JSON: ${String(options).slice(0, 120)}`,
+                }),
+              },
+            ],
+            isError: true,
+          };
+        }
+      }
+      if (!Array.isArray(options)) {
+        return {
+          content: [
+            {
+              type: 'text',
+              text: JSON.stringify({
+                success: false,
+                message: 'metadata_update_field: options must be an array',
+                error: `options must be an array of {value, label, color, position?, id?} objects; received ${typeof options}`,
+              }),
+            },
+          ],
+          isError: true,
+        };
+      }
+    }
+    return wrapInExecute(client, 'update_field_metadata', {
+      ...args,
+      ...(options !== undefined ? { options } : {}),
+    });
+  },
 
   metadataCreateManyFields: (
     args: z.infer<typeof metadataCreateManyFieldsInputSchema>,
