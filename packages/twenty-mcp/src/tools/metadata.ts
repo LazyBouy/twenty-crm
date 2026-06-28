@@ -652,7 +652,8 @@ export const buildMetadataHandlers = (
       }
 
       // Substitute $<key> and ${<key>} placeholders before dispatch.
-      const effectiveArgs = resolvePlaceholders(m.args, resolved) as Record<
+      // Declared let so the SELECT IS/IS_NOT coercion below can spread-replace it.
+      let effectiveArgs = resolvePlaceholders(m.args, resolved) as Record<
         string,
         unknown
       >;
@@ -696,6 +697,18 @@ export const buildMetadataHandlers = (
         if (!check.valid) {
           failed = { key: m.key, op: m.op, error: check.error };
           break;
+        }
+        // Coerce SELECT IS/IS_NOT value from string to array (issue #10 — symmetric with Layer 1).
+        if (
+          check.fieldType === 'SELECT' &&
+          (effectiveArgs.operand === 'IS' ||
+            effectiveArgs.operand === 'IS_NOT') &&
+          typeof effectiveArgs.value === 'string'
+        ) {
+          effectiveArgs = {
+            ...effectiveArgs,
+            value: [effectiveArgs.value],
+          };
         }
       }
 

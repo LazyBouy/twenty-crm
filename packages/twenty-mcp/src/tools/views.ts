@@ -120,7 +120,7 @@ Valid operand by field type (enforced at runtime — invalid combos are rejected
 // (Layer 2 symmetry — both layers call the same check, no drift).
 
 type AssertResult =
-  | { valid: true; unknownType?: boolean }
+  | { valid: true; fieldType?: string; unknownType?: boolean }
   | { valid: false; error: string };
 
 export const assertOperandCompatible = async (
@@ -191,7 +191,7 @@ export const assertOperandCompatible = async (
     };
   }
 
-  return { valid: true };
+  return { valid: true, fieldType };
 };
 
 // --- Shared sub-schemas ------------------------------------------------------
@@ -348,7 +348,7 @@ export const metadataCreateViewFilterInputSchema = z.object({
       z.record(z.string(), z.unknown()),
     ])
     .describe(
-      'Filter value. Type depends on operand + field type. CONTAINS/DOES_NOT_CONTAIN on TEXT: string. IS/IS_NOT on SELECT: option value (UPPER_SNAKE_CASE). IS_EMPTY/IS_NOT_EMPTY: empty string "". CONTAINS on MULTI_SELECT: string array. Etc.',
+      'Filter value. Type depends on operand + field type. CONTAINS/DOES_NOT_CONTAIN on TEXT: string. IS/IS_NOT on SELECT: array of option values e.g. ["TIER_A"] — NOT a plain string. IS/IS_NOT on MULTI_SELECT: array of option values. IS_EMPTY/IS_NOT_EMPTY: empty string "". Etc.',
     ),
   subFieldName: z
     .string()
@@ -369,7 +369,10 @@ export const metadataUpdateViewFilterInputSchema = z.object({
       z.array(z.string()),
       z.record(z.string(), z.unknown()),
     ])
-    .optional(),
+    .optional()
+    .describe(
+      'Filter value. Type depends on operand + field type. CONTAINS/DOES_NOT_CONTAIN on TEXT: string. IS/IS_NOT on SELECT: array of option values e.g. ["TIER_A"] — NOT a plain string. IS/IS_NOT on MULTI_SELECT: array of option values. IS_EMPTY/IS_NOT_EMPTY: empty string "". Etc.',
+    ),
   subFieldName: z.string().optional(),
   fieldMetadataId: z.string().uuid().optional(),
 });
@@ -392,6 +395,26 @@ export const stripFieldMetadataIdFromUpdateArgs = (
 ): Record<string, unknown> => {
   const { fieldMetadataId: _, ...rest } = args;
   return rest;
+};
+
+// --- Coercion helpers --------------------------------------------------------
+
+// Coerce SELECT IS/IS_NOT value from a plain string to a single-element array.
+// Twenty's frontend expects an array for SELECT IS/IS_NOT filters; passing a
+// string produces a UI crash (see issue #10).
+const coerceSelectIsValue = (
+  value: unknown,
+  fieldType: string,
+  operand: string,
+): unknown => {
+  if (
+    fieldType === 'SELECT' &&
+    (operand === 'IS' || operand === 'IS_NOT') &&
+    typeof value === 'string'
+  ) {
+    return [value];
+  }
+  return value;
 };
 
 // --- Handlers ----------------------------------------------------------------
@@ -440,7 +463,15 @@ export const buildViewHandlers = (client: TwentyMcpClient) => ({
       return makeError(check.error);
     }
 
-    return wrapInExecute(client, 'create_view_filter', args);
+    const coercedValue = coerceSelectIsValue(
+      args.value,
+      check.fieldType ?? '',
+      args.operand,
+    );
+    return wrapInExecute(client, 'create_view_filter', {
+      ...args,
+      value: coercedValue,
+    });
   },
 
   metadataUpdateViewFilter: async (
@@ -466,6 +497,20 @@ export const buildViewHandlers = (client: TwentyMcpClient) => ({
       if (!check.valid) {
         return makeError(check.error);
       }
+
+      const coercedValue =
+        args.value !== undefined
+          ? coerceSelectIsValue(
+              args.value,
+              check.fieldType ?? '',
+              args.operand!,
+            )
+          : args.value;
+      return wrapInExecute(
+        client,
+        'update_view_filter',
+        stripFieldMetadataIdFromUpdateArgs({ ...args, value: coercedValue }),
+      );
     }
 
     return wrapInExecute(
@@ -550,7 +595,7 @@ export const viewToolDefinitions = {
     description:
       'Add a filter row to an existing view. The wrapper validates operand-vs-field-type compatibility at runtime. Invalid combinations are rejected with an explicit error before reaching Twenty.\n\n' +
       OPERAND_MATRIX_DESCRIPTION +
-      '\n\nFilter value rules (by operand): IS_EMPTY/IS_NOT_EMPTY: pass empty string "". CONTAINS/DOES_NOT_CONTAIN on TEXT: string. IS/IS_NOT on SELECT: option value (UPPER_SNAKE_CASE). CONTAINS on MULTI_SELECT: array of option values. IS_BEFORE/IS_AFTER/IS on DATE_TIME: ISO 8601 string. VECTOR_SEARCH on TS_VECTOR: search string.',
+      '\n\nFilter value rules (by operand): IS_EMPTY/IS_NOT_EMPTY: pass empty string "". CONTAINS/DOES_NOT_CONTAIN on TEXT: string. IS/IS_NOT on SELECT: array of option values e.g. ["TIER_A"] — NOT a plain string. CONTAINS on MULTI_SELECT: array of option values. IS_BEFORE/IS_AFTER/IS on DATE_TIME: ISO 8601 string. VECTOR_SEARCH on TS_VECTOR: search string.',
     inputSchema: metadataCreateViewFilterInputSchema.shape,
     annotations: { destructiveHint: true, idempotentHint: false },
   },

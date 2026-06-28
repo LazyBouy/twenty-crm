@@ -1103,6 +1103,70 @@ describe('metadata_apply_plan — apply_plan UPDATE_VIEW_FILTER does NOT forward
   });
 });
 
+// --- apply_plan SELECT IS/IS_NOT coercion tests (issue #10) ---
+
+describe('metadata_apply_plan — SELECT IS/IS_NOT coercion (Layer 2, issue #10)', () => {
+  it('metadataApplyPlan CREATE_VIEW_FILTER coerces SELECT IS string value to array', async () => {
+    const { toolsCall, client, apiKey } =
+      makeMetadataClientWithFieldType('SELECT');
+    const handlers = buildMetadataHandlers(client, apiKey);
+
+    await handlers.metadataApplyPlan({
+      mutations: [
+        {
+          key: 'k1',
+          op: 'CREATE_VIEW_FILTER',
+          args: {
+            viewId: '00000000-0000-0000-0000-000000000002',
+            fieldMetadataId: '00000000-0000-0000-0000-000000000003',
+            operand: 'IS',
+            value: 'TIER_A',
+          },
+        },
+      ],
+    });
+
+    const createCalls = toolsCall.mock.calls.filter(
+      (c) => (c[1] as { toolName: string })?.toolName === 'create_view_filter',
+    );
+    expect(createCalls).toHaveLength(1);
+    const forwardedArgs = (
+      createCalls[0]![1] as { arguments: Record<string, unknown> }
+    ).arguments;
+    expect(forwardedArgs.value).toEqual(['TIER_A']);
+  });
+
+  it('metadataApplyPlan CREATE_VIEW_FILTER does not double-wrap SELECT IS array value', async () => {
+    const { toolsCall, client, apiKey } =
+      makeMetadataClientWithFieldType('SELECT');
+    const handlers = buildMetadataHandlers(client, apiKey);
+
+    await handlers.metadataApplyPlan({
+      mutations: [
+        {
+          key: 'k1',
+          op: 'CREATE_VIEW_FILTER',
+          args: {
+            viewId: '00000000-0000-0000-0000-000000000002',
+            fieldMetadataId: '00000000-0000-0000-0000-000000000003',
+            operand: 'IS',
+            value: ['TIER_A'],
+          },
+        },
+      ],
+    });
+
+    const createCalls = toolsCall.mock.calls.filter(
+      (c) => (c[1] as { toolName: string })?.toolName === 'create_view_filter',
+    );
+    expect(createCalls).toHaveLength(1);
+    const forwardedArgs = (
+      createCalls[0]![1] as { arguments: Record<string, unknown> }
+    ).arguments;
+    expect(forwardedArgs.value).toEqual(['TIER_A']);
+  });
+});
+
 describe('metadata_compute_plan_hash', () => {
   it('compute_plan_hash returns the same hash as sha256OfMutations', () => {
     const { toolsCall, graphqlMutation, client, apiKey } = makeClient();

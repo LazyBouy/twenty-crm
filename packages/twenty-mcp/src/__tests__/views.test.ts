@@ -351,3 +351,93 @@ describe('FIELD_TYPE_OPERAND_MAP — matrix coverage', () => {
     }
   });
 });
+
+// --- SELECT IS/IS_NOT coercion tests (issue #10) -----------------------------
+
+describe('metadataCreateViewFilter coerces SELECT IS/IS_NOT value', () => {
+  it('metadataCreateViewFilter coerces SELECT IS string value to array', async () => {
+    const { toolsCall, client } = makeClient('SELECT');
+    const handlers = buildViewHandlers(client);
+
+    await handlers.metadataCreateViewFilter({
+      viewId: '00000000-0000-0000-0000-000000000002',
+      fieldMetadataId: '00000000-0000-0000-0000-000000000003',
+      operand: 'IS',
+      value: 'TIER_A',
+    });
+
+    const createCalls = toolsCall.mock.calls.filter(
+      (c) => (c[1] as { toolName: string })?.toolName === 'create_view_filter',
+    );
+    expect(createCalls).toHaveLength(1);
+    const forwardedArgs = (
+      createCalls[0]![1] as { arguments: Record<string, unknown> }
+    ).arguments;
+    expect(forwardedArgs.value).toEqual(['TIER_A']);
+  });
+
+  it('metadataCreateViewFilter does not double-wrap SELECT IS array value', async () => {
+    const { toolsCall, client } = makeClient('SELECT');
+    const handlers = buildViewHandlers(client);
+
+    await handlers.metadataCreateViewFilter({
+      viewId: '00000000-0000-0000-0000-000000000002',
+      fieldMetadataId: '00000000-0000-0000-0000-000000000003',
+      operand: 'IS',
+      value: ['TIER_A'],
+    });
+
+    const createCalls = toolsCall.mock.calls.filter(
+      (c) => (c[1] as { toolName: string })?.toolName === 'create_view_filter',
+    );
+    expect(createCalls).toHaveLength(1);
+    const forwardedArgs = (
+      createCalls[0]![1] as { arguments: Record<string, unknown> }
+    ).arguments;
+    expect(forwardedArgs.value).toEqual(['TIER_A']);
+  });
+
+  it('metadataCreateViewFilter does not coerce TEXT CONTAINS value', async () => {
+    const { toolsCall, client } = makeClient('TEXT');
+    const handlers = buildViewHandlers(client);
+
+    await handlers.metadataCreateViewFilter({
+      viewId: '00000000-0000-0000-0000-000000000002',
+      fieldMetadataId: '00000000-0000-0000-0000-000000000003',
+      operand: 'CONTAINS',
+      value: 'foo',
+    });
+
+    const createCalls = toolsCall.mock.calls.filter(
+      (c) => (c[1] as { toolName: string })?.toolName === 'create_view_filter',
+    );
+    expect(createCalls).toHaveLength(1);
+    const forwardedArgs = (
+      createCalls[0]![1] as { arguments: Record<string, unknown> }
+    ).arguments;
+    expect(forwardedArgs.value).toBe('foo');
+  });
+});
+
+describe('metadataUpdateViewFilter coerces SELECT IS/IS_NOT value', () => {
+  it('metadataUpdateViewFilter coerces SELECT IS_NOT string value to array', async () => {
+    const { toolsCall, client } = makeClient('SELECT');
+    const handlers = buildViewHandlers(client);
+
+    await handlers.metadataUpdateViewFilter({
+      id: '00000000-0000-0000-0000-000000000001',
+      fieldMetadataId: '00000000-0000-0000-0000-000000000003',
+      operand: 'IS_NOT',
+      value: 'TIER_B',
+    });
+
+    const updateCalls = toolsCall.mock.calls.filter(
+      (c) => (c[1] as { toolName: string })?.toolName === 'update_view_filter',
+    );
+    expect(updateCalls).toHaveLength(1);
+    const forwardedArgs = (
+      updateCalls[0]![1] as { arguments: Record<string, unknown> }
+    ).arguments;
+    expect(forwardedArgs.value).toEqual(['TIER_B']);
+  });
+});
