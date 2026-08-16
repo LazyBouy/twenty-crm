@@ -65,3 +65,7 @@ TRANSLATION_QA_REPORT.md
 .playwright-mcp/
 .playwright-cli/
 output/playwright/
+
+# Host-specific deployment notes (security findings, runbooks). Never committed —
+# they reference real IPs, hostnames and infrastructure layout.
+local-notes/

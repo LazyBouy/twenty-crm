@@ -109,8 +109,13 @@ services:
   caddy:
     image: caddy:2-alpine
     ports:
-      - "80:80"
-      - "443:443"
+      # Bind to a specific host IP — a bare "80:80" publishes on 0.0.0.0, which
+      # combined with the Caddyfile's hostless `:80` block serves the whole CRM
+      # (UI + /graphql) to the public internet over plaintext HTTP.
+      # Set CADDY_BIND_IP in .env to the tailnet/private address to serve on.
+      # Default 127.0.0.1 is fail-safe: never public unless explicitly opted in.
+      # No 443 publish — the Caddyfile defines no TLS site, so it was dead config.
+      - "${CADDY_BIND_IP:-127.0.0.1}:80:80"
     volumes:
       - ./Caddyfile:/etc/caddy/Caddyfile:ro
       - caddy-data:/data
