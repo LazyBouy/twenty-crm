@@ -3,7 +3,7 @@
 > Issue(s): #10
 > Plan: plans/issue-10-create-update-view-filter-select-is-isnot-value-must-be-array.md
 > Audit cycles: 1 (clean on round 1)
-> Commit: <pending — filled by closer post-commit>
+> Commit: 19bdc16e176b2ac99bf0a2c358f93aeeae953446
 > Written: 2026-06-28T00:00:00Z
 
 ## Forecast vs actual

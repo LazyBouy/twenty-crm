@@ -3,7 +3,7 @@
 > Issue(s): #22
 > Plan: packages/twenty-mcp/plans/issue-22-metadata-update-field-select-options-mangling.md
 > Audit cycles: 2 (round 1 BLOCKED on lint; round 2 clean)
-> Commit: <pending — filled by closer post-commit>
+> Commit: eb4c33ed1c98bb584e2369572fb82293f2b03636
 > Written: 2026-06-27T00:00:00Z
 
 ## Forecast vs actual
